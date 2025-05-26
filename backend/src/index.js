@@ -6,6 +6,7 @@ import authRoutes from './routes/auth.js';
 import userRoutes from './routes/user.js';
 import assessmentRoutes from './routes/assessmentRoutes.js';
 import puzzleRoutes from './routes/puzzleRoutes.js';
+import adaptabilityRoutes from './routes/adaptabilityRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -41,6 +42,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/assessments', assessmentRoutes);
 app.use('/api/puzzle', puzzleRoutes);
+app.use('/api/adaptability', adaptabilityRoutes);
 
 // Connect to MongoDB
 const connectDB = async () => {

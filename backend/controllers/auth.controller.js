@@ -46,6 +46,16 @@ export const signup = async (req, res) => {
       });
     }
 
+    // Validate password strength
+    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+    if (!strongPasswordRegex.test(password)) {
+      console.log('Validation failed: Password does not meet strength requirements');
+      return res.status(400).json({ 
+        message: 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character',
+        field: 'password'
+      });
+    }
+
     // Check if email already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -352,6 +362,16 @@ export const resetPassword = async (req, res) => {
     // Validate password
     if (!password || password.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters long' });
+    }
+
+    // Validate password strength
+    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+    if (!strongPasswordRegex.test(password)) {
+      console.log('Validation failed: Password does not meet strength requirements');
+      return res.status(400).json({ 
+        message: 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character',
+        field: 'password'
+      });
     }
 
     // Find user with valid reset token

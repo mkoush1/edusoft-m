@@ -81,7 +81,7 @@ const AssessmentDetails = () => {
               </div>
               <div className="flex-1 bg-[#592538]/5 rounded-lg p-4">
                 <div className="text-sm text-gray-600 mb-1">Questions</div>
-                <div className="text-lg font-semibold text-[#592538]">20</div>
+                <div className="text-lg font-semibold text-[#592538]">40</div>
               </div>
             </div>
 

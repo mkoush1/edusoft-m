@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-// import '../styles/AssessmentQuiz.css';
-import { submitAssessment } from "../services/api";
 
-const AssessmentQuiz = () => {
+const AssessmentQuizFast = () => {
   const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,21 +10,21 @@ const AssessmentQuiz = () => {
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(null);
   const [error, setError] = useState("");
+  const [questionTimeLeft, setQuestionTimeLeft] = useState(null);
+  const [questionTimedOut, setQuestionTimedOut] = useState(false);
+  const timerRef = useRef();
 
   useEffect(() => {
     const startAssessment = async () => {
       try {
         const token = localStorage.getItem("token");
-        console.log("Starting assessment with token:", token);
-
         if (!token) {
           setError("Please log in to take the assessment");
           setLoading(false);
           return;
         }
-
         const response = await axios.post(
-          "http://localhost:5000/api/assessments/start/leadership",
+          "http://localhost:5000/api/assessments/start/fast-questions",
           {},
           {
             headers: {
@@ -35,21 +33,14 @@ const AssessmentQuiz = () => {
             },
           }
         );
-
-        console.log("API Response:", response.data);
-
         if (response.data && response.data.questions) {
-          console.log("Questions received:", response.data.questions);
           setQuestions(response.data.questions);
-          setTimeLeft(45 * 60); // 45 minutes in seconds
+          setTimeLeft(50 * 60); // 50 minutes in seconds
         } else {
-          console.error("No questions in response:", response.data);
           setError("No questions available. Please try again later.");
         }
         setLoading(false);
       } catch (error) {
-        console.error("Error starting assessment:", error);
-        console.error("Error response:", error.response);
         setError(
           error.response?.data?.message ||
             "Error starting assessment. Please try again later."
@@ -57,13 +48,11 @@ const AssessmentQuiz = () => {
         setLoading(false);
       }
     };
-
     startAssessment();
   }, []);
 
   useEffect(() => {
     if (timeLeft === null) return;
-
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -74,14 +63,40 @@ const AssessmentQuiz = () => {
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(timer);
   }, [timeLeft]);
 
+  // Reset per-question timer on question change
+  useEffect(() => {
+    if (!questions.length) return;
+    setQuestionTimeLeft(questions[currentQuestionIndex].timeLimit);
+    setQuestionTimedOut(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setQuestionTimeLeft((prev) => {
+        if (prev === 1) {
+          clearInterval(timerRef.current);
+          setQuestionTimedOut(true);
+          // Auto-advance after a short delay
+          setTimeout(() => {
+            if (currentQuestionIndex === questions.length - 1) {
+              handleSubmit();
+            } else {
+              setCurrentQuestionIndex((idx) => idx + 1);
+            }
+          }, 800);
+        }
+        return prev > 0 ? prev - 1 : 0;
+      });
+    }, 1000);
+    return () => clearInterval(timerRef.current);
+    // eslint-disable-next-line
+  }, [currentQuestionIndex, questions]);
+
   const handleAnswer = (option) => {
+    if (questionTimedOut) return;
     const currentQuestion = questions[currentQuestionIndex];
     if (!currentQuestion) return;
-
     setAnswers({
       ...answers,
       [currentQuestion.questionNumber]: option,
@@ -104,23 +119,17 @@ const AssessmentQuiz = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-
       if (!token) {
         setError("Please log in to submit the assessment");
         setLoading(false);
         return;
       }
-
-      // Format answers for submission
       const formattedAnswers = Object.entries(answers).map(([questionNumber, answer]) => ({
         questionNumber: parseInt(questionNumber),
         answer: answer
       }));
-
-      console.log("Submitting answers:", formattedAnswers);
-      
-      const response = await axios.post(
-        "http://localhost:5000/api/assessments/submit/leadership",
+      await axios.post(
+        "http://localhost:5000/api/assessments/submit/fast-questions",
         {
           answers: formattedAnswers
         },
@@ -131,21 +140,8 @@ const AssessmentQuiz = () => {
           },
         }
       );
-
-      console.log("Assessment submitted successfully:", response.data);
-
-      // Update localStorage with new assessment status
-      if (response.data.result && response.data.result.assessmentStatus) {
-        localStorage.setItem('assessmentStatus', JSON.stringify(response.data.result.assessmentStatus));
-      }
-
-      // Wait a moment to ensure the backend has processed the submission
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Navigate to recommendations page
-      navigate("/assessment/leadership/recommendations");
+      navigate("/dashboard");
     } catch (error) {
-      console.error("Error submitting assessment:", error);
       setError("Failed to submit assessment. Please try again.");
     } finally {
       setLoading(false);
@@ -191,7 +187,7 @@ const AssessmentQuiz = () => {
         <div className="bg-white rounded-2xl shadow-lg mb-6 p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <h1 className="text-2xl font-bold text-[#592538]">
-              Leadership Skills Assessment
+              Fast Questions Assessment
             </h1>
             <div className="flex items-center gap-2 text-[#592538]">
               <span className="text-lg">⏱️</span>
@@ -199,14 +195,13 @@ const AssessmentQuiz = () => {
             </div>
           </div>
         </div>
-
         {/* Question Card */}
         <div className="bg-white rounded-2xl shadow-lg p-6">
           {/* Progress */}
           <div className="mb-6">
             <div className="flex justify-between text-sm text-gray-600 mb-2">
               <span>Question {currentQuestionIndex + 1} of {questions.length}</span>
-              <span>{currentQuestion.competency}</span>
+              <span>{currentQuestion.section}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
@@ -217,24 +212,28 @@ const AssessmentQuiz = () => {
               ></div>
             </div>
           </div>
-
           {/* Question */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-[#592538] mb-6">
+            <h2 className="text-xl font-semibold text-[#592538] mb-2">
               {currentQuestion.questionText}
             </h2>
-
+            <div className="mb-4 text-sm text-gray-500">
+              Time left: {questionTimeLeft} seconds
+            </div>
             {/* Options */}
             <div className="space-y-4">
               {currentQuestion.options.map((option) => (
                 <button
                   key={option.letter}
                   onClick={() => handleAnswer(option.letter)}
+                  disabled={questionTimedOut}
                   className={`
                     w-full p-4 text-left rounded-lg transition duration-300
                     ${
                       answers[currentQuestion.questionNumber] === option.letter
                         ? "bg-[#592538] text-white"
+                        : questionTimedOut
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                         : "bg-gray-100 text-gray-600 hover:bg-[#592538]/10"
                     }
                   `}
@@ -245,16 +244,15 @@ const AssessmentQuiz = () => {
               ))}
             </div>
           </div>
-
           {/* Navigation */}
           <div className="flex flex-wrap gap-4">
             <button
               onClick={handlePrevious}
-              disabled={currentQuestionIndex === 0}
+              disabled={currentQuestionIndex === 0 || questionTimedOut}
               className={`
                 flex-1 px-6 py-3 rounded-lg font-medium transition duration-300
                 ${
-                  currentQuestionIndex === 0
+                  currentQuestionIndex === 0 || questionTimedOut
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                     : "bg-gray-100 text-[#592538] hover:bg-gray-200"
                 }
@@ -265,26 +263,26 @@ const AssessmentQuiz = () => {
             {currentQuestionIndex === questions.length - 1 ? (
               <button
                 onClick={handleSubmit}
-                disabled={!answers[currentQuestion.questionNumber]}
+                disabled={!answers[currentQuestion.questionNumber] || questionTimedOut}
                 className={`
                   flex-1 px-6 py-3 rounded-lg font-medium transition duration-300
                   ${
-                    !answers[currentQuestion.questionNumber]
+                    !answers[currentQuestion.questionNumber] || questionTimedOut
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                       : "bg-[#592538] text-white hover:bg-[#6d2c44]"
                   }
                 `}
               >
-                Submit Assessment
+                Finish Assessment
               </button>
             ) : (
               <button
                 onClick={handleNext}
-                disabled={!answers[currentQuestion.questionNumber]}
+                disabled={!answers[currentQuestion.questionNumber] || questionTimedOut}
                 className={`
                   flex-1 px-6 py-3 rounded-lg font-medium transition duration-300
                   ${
-                    !answers[currentQuestion.questionNumber]
+                    !answers[currentQuestion.questionNumber] || questionTimedOut
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                       : "bg-[#592538] text-white hover:bg-[#6d2c44]"
                   }
@@ -300,4 +298,4 @@ const AssessmentQuiz = () => {
   );
 };
 
-export default AssessmentQuiz;
+export default AssessmentQuizFast; 

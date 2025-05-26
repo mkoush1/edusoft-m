@@ -56,7 +56,10 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const response = await authService.login(formData);
+      const response = await authService.login({
+        ...formData,
+        email: formData.email.toLowerCase(),
+      });
 
       if (response.token) {
         // Store authentication data
@@ -175,7 +178,10 @@ const LoginPage = () => {
                   className="w-full px-4 py-3 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-white/50"
                 />
                 {errors.password && (
-                  <p className="mt-1 text-sm text-red-200">{errors.password}</p>
+                  <div className="flex items-center gap-2 mt-1 p-2 bg-red-50 border border-red-200 rounded">
+                    <svg className="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12A9 9 0 1 1 3 12a9 9 0 0 1 18 0Z" /></svg>
+                    <span className="text-sm text-red-700">{errors.password}</span>
+                  </div>
                 )}
               </div>
 

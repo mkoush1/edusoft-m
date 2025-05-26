@@ -7,13 +7,17 @@ export const isValidEmail = (email) => {
 // Password validation
 export const validatePassword = (password) => {
   if (!password) return 'Password is required';
-  if (password.length < 6) return 'Password must be at least 6 characters long';
+  const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+  if (!strongPasswordRegex.test(password)) {
+    return 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character';
+  }
   return '';
 };
 
 // Password validation check
 export const isValidPassword = (password) => {
-  return password && password.length >= 6;
+  const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+  return !!password && strongPasswordRegex.test(password);
 };
 
 // Name validation
@@ -41,7 +45,7 @@ export const validationMessages = {
   },
   password: {
     required: 'Password is required',
-    invalid: 'Password must be at least 6 characters long'
+    invalid: 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character'
   },
   role: {
     required: 'Role is required',

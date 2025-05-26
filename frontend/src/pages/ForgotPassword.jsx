@@ -117,7 +117,7 @@ const ForgotPassword = () => {
                   required
                   className="w-full px-4 py-3 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-white/50"
                 >
-                  <option value="user">User</option>
+                  <option value="user">Student</option>
                   <option value="supervisor">Supervisor</option>
                 </select>
               </div>

@@ -36,6 +36,7 @@ const UserDashboard = () => {
     { icon: "🎯", value: "0%", label: "Overall Progress" },
     { icon: "⏱️", value: "0", label: "Time Spent" },
   ]);
+  const [completedAssessments, setCompletedAssessments] = useState([]);
 
   const fetchDashboardData = async () => {
     try {
@@ -89,14 +90,21 @@ const UserDashboard = () => {
       newStats[2].value = `${Math.round(status.progress)}%`; // Progress
       setStats(newStats);
 
-      // Update assessments to show only available ones
-      const completedTypes = status.completedAssessments.map(
-        (a) => a.assessmentType
+      // Save completed assessments
+      setCompletedAssessments(status.completedAssessments || []);
+
+      // Merge available and completed assessments for display
+      // Instead of showing completed first, keep the original order from the backend
+      const completedMap = Object.fromEntries(
+        (status.completedAssessments || []).map(a => [a.assessmentType, a])
       );
-      const availableAssessments = assessmentsResponse.data.filter(
-        (assessment) => !completedTypes.includes(assessment.category)
-      );
-      setAssessments(availableAssessments);
+      const mergedAssessments = assessmentsResponse.data.map((assessment) => {
+        const completed = completedMap[assessment.category];
+        return completed
+          ? { ...assessment, ...completed, completed: true }
+          : { ...assessment, completed: false };
+      });
+      setAssessments(mergedAssessments);
 
       setLoading(false);
     } catch (error) {
@@ -124,6 +132,11 @@ const UserDashboard = () => {
       window.removeEventListener("storage", handleStorageChange);
     };
   }, [navigate]);
+
+  // Handler for viewing results
+  const handleViewResults = (assessment) => {
+    navigate(`/assessment/${assessment.category || assessment.assessmentType}/recommendations`);
+  };
 
   if (loading) {
     return (
@@ -157,11 +170,15 @@ const UserDashboard = () => {
       {/* Assessments Section */}
       <div className="bg-white rounded-xl shadow-md p-6">
         <h2 className="text-2xl font-bold text-[#592538] mb-6">
-          Available Assessments
+          Your Assessments
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {assessments.map((assessment) => (
-            <AssessmentCard key={assessment._id} assessment={assessment} />
+            <AssessmentCard
+              key={assessment._id || assessment.assessmentType}
+              assessment={assessment}
+              onViewResults={handleViewResults}
+            />
           ))}
         </div>
       </div>

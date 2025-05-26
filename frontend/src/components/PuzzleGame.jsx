@@ -7,9 +7,14 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
   const [puzzle, setPuzzle] = useState(initialPuzzle);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [timer, setTimer] = useState(0);
+  const [timer, setTimer] = useState(240); // 4 minutes in seconds
   const [timerInterval, setTimerInterval] = useState(null);
   const [validMoves, setValidMoves] = useState([]);
+  const [isPaused, setIsPaused] = useState(false);
+  const [savedState, setSavedState] = useState(null);
+  const [isTimeUp, setIsTimeUp] = useState(false);
+  const [score, setScore] = useState(0);
+  const [scoreMessage, setScoreMessage] = useState('');
 
   useEffect(() => {
     startTimer();
@@ -17,6 +22,83 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
       if (timerInterval) clearInterval(timerInterval);
     };
   }, []);
+
+  // Check if time is up
+  useEffect(() => {
+    if (timer <= 0 && !isPaused) {
+      handleTimeUp();
+    }
+  }, [timer]);
+
+  const calculateScore = (timeInSeconds, moves) => {
+    const timeInMinutes = timeInSeconds / 60;
+    const maxMoves = 50; // Define what "few moves" means
+    const moveFactor = Math.max(0, 1 - (moves / maxMoves));
+
+    let baseScore;
+    if (timeInMinutes <= 1) {
+      baseScore = 100;
+    } else if (timeInMinutes <= 2) {
+      baseScore = 85;
+    } else if (timeInMinutes <= 3) {
+      baseScore = 70;
+    } else {
+      baseScore = 50;
+    }
+
+    // Adjust score based on moves
+    const finalScore = Math.round(baseScore * (0.7 + (0.3 * moveFactor)));
+    
+    // Set score message
+    if (finalScore === 100) {
+      setScoreMessage("Excellent! Perfect score! You're a puzzle master!");
+    } else if (finalScore >= 85) {
+      setScoreMessage("Very good! You're really good at this!");
+    } else if (finalScore >= 70) {
+      setScoreMessage("Good job! You can do even better next time!");
+    } else {
+      setScoreMessage("Keep practicing! You can improve your score!");
+    }
+
+    return finalScore;
+  };
+
+  const handleTimeUp = async () => {
+    clearInterval(timerInterval);
+    setIsTimeUp(true);
+    const finalScore = calculateScore(240 - timer, puzzle.moves);
+    setScore(finalScore);
+    // Submit the assessment with the current state
+    await submitAssessment({
+      ...puzzle,
+      isCompleted: true,
+      timeUp: true,
+      score: finalScore
+    });
+  };
+
+  const startTimer = () => {
+    if (timerInterval) clearInterval(timerInterval);
+    setTimer(240); // Reset to 4 minutes
+    const interval = setInterval(() => {
+      if (!isPaused) {
+        setTimer(prev => {
+          if (prev <= 0) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }
+    }, 1000);
+    setTimerInterval(interval);
+  };
+
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
 
   // Update valid moves whenever puzzle state changes
   useEffect(() => {
@@ -50,17 +132,24 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
     setValidMoves(newValidMoves);
   }, [puzzle]);
 
-  const startTimer = () => {
-    if (timerInterval) clearInterval(timerInterval);
-    setTimer(0);
-    const interval = setInterval(() => {
-      setTimer(prev => prev + 1);
-    }, 1000);
-    setTimerInterval(interval);
+  const togglePause = () => {
+    if (isPaused) {
+      // Resume game
+      setIsPaused(false);
+      setSavedState(null);
+    } else {
+      // Pause game
+      setIsPaused(true);
+      setSavedState({
+        currentState: puzzle.currentState,
+        moves: puzzle.moves,
+        time: timer
+      });
+    }
   };
 
   const makeMove = async (row, col) => {
-    if (!puzzle || puzzle.isCompleted) return;
+    if (!puzzle || puzzle.isCompleted || isPaused || isTimeUp) return;
     
     // Don't allow clicking on the empty cell
     if (puzzle.currentState[row][col] === 0) {
@@ -112,6 +201,8 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
+      const finalScore = calculateScore(240 - timer, completedPuzzle.moves);
+      setScore(finalScore);
 
       const response = await axios.post(
         'http://localhost:5000/api/assessments/submit/puzzle-game',
@@ -120,8 +211,9 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
             puzzleId: completedPuzzle._id,
             difficulty: 'medium',
             moves: completedPuzzle.moves,
-            timeTaken: timer,
-            completed: true
+            timeTaken: 240 - timer,
+            completed: true,
+            score: finalScore
           }]
         },
         {
@@ -133,9 +225,22 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
       );
 
       if (response.data.success) {
-        // Wait a moment to ensure the backend has processed the submission
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        navigate('/assessment/recommendations');
+        // Update local storage with the new assessment status
+        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+        if (userData) {
+          userData.completedAssessments = response.data.result.assessmentStatus.completedAssessments;
+          userData.totalAssessmentsCompleted = response.data.result.assessmentStatus.totalCompleted;
+          userData.progress = response.data.result.assessmentStatus.progress;
+          localStorage.setItem('userData', JSON.stringify(userData));
+        }
+
+        // Show success message
+        setError(null);
+        setPuzzle(prev => ({
+          ...prev,
+          isCompleted: true,
+          showWinMessage: true
+        }));
       } else {
         setError('Failed to submit assessment');
       }
@@ -218,7 +323,7 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Slide Puzzle</h1>
           <div className="text-gray-600">
-            Moves: {puzzle?.moves} | Time: {timer}s
+            Moves: {puzzle?.moves} | Time: {formatTime(timer)}
           </div>
         </div>
 
@@ -226,6 +331,20 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
         {error && !error.includes('Invalid move') && (
           <div className="mb-4 p-2 bg-red-100 text-red-600 rounded">
             {error}
+          </div>
+        )}
+
+        {isPaused && (
+          <div className="mb-4 p-4 bg-yellow-100 text-yellow-800 rounded-lg text-center">
+            <p className="font-bold">Game Paused</p>
+            <p>Moves: {savedState?.moves} | Time: {formatTime(savedState?.time)}</p>
+          </div>
+        )}
+
+        {isTimeUp && (
+          <div className="mb-4 p-4 bg-red-100 text-red-800 rounded-lg text-center">
+            <p className="font-bold">Time's Up!</p>
+            <p>Game Over - You ran out of time</p>
           </div>
         )}
 
@@ -237,9 +356,9 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
                 className={`w-20 h-20 flex items-center justify-center text-2xl font-bold rounded-lg
                   ${cell === 0 ? 'bg-transparent' : 'bg-white hover:bg-gray-100'}
                   ${validMoves.includes(`${i},${j}`) ? 'ring-2 ring-blue-500' : ''}
-                  ${puzzle.isCompleted ? 'cursor-default' : 'cursor-pointer'}`}
-                onClick={() => !puzzle.isCompleted && makeMove(i, j)}
-                disabled={cell === 0 || puzzle.isCompleted}
+                  ${(puzzle.isCompleted || isPaused || isTimeUp) ? 'cursor-default' : 'cursor-pointer'}`}
+                onClick={() => !puzzle.isCompleted && !isPaused && !isTimeUp && makeMove(i, j)}
+                disabled={cell === 0 || puzzle.isCompleted || isPaused || isTimeUp}
               >
                 {cell !== 0 && cell}
               </button>
@@ -247,25 +366,62 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
           ))}
         </div>
 
-        {puzzle?.isCompleted && (
-          <div className="mt-6 text-center">
-            <p className="text-xl font-bold text-green-600 mb-4">
-              Congratulations! You solved the puzzle!
-            </p>
-            <p className="text-gray-600 mb-4">
-              Moves: {puzzle.moves} | Time: {timer}s
-            </p>
+        {!puzzle?.isCompleted && !isTimeUp && (
+          <div className="mt-6 space-y-2">
+            <button
+              onClick={togglePause}
+              className={`w-full px-4 py-2 rounded-lg ${
+                isPaused 
+                  ? 'bg-green-500 hover:bg-green-600 text-white' 
+                  : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+              }`}
+            >
+              {isPaused ? 'Resume Game' : 'Pause Game'}
+            </button>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="w-full px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+            >
+              Back to Dashboard
+            </button>
           </div>
         )}
 
-        <div className="mt-6">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="w-full px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-          >
-            Back to Dashboard
-          </button>
-        </div>
+        {(puzzle?.isCompleted || isTimeUp) && (
+          <div className="mt-6 text-center">
+            <p className={`text-xl font-bold mb-4 ${isTimeUp ? 'text-red-600' : 'text-green-600'}`}>
+              {isTimeUp ? "Time's Up!" : "Congratulations! You solved the puzzle!"}
+            </p>
+            <p className="text-gray-600 mb-4">
+              Moves: {puzzle.moves} | Time: {formatTime(timer)}
+            </p>
+            <p className="text-gray-600 mb-4">
+              Score: {score} points
+            </p>
+            <p className={`text-lg font-semibold mb-4 ${
+              score === 100 ? 'text-green-600' : 
+              score >= 85 ? 'text-blue-600' : 
+              score >= 70 ? 'text-yellow-600' : 
+              'text-orange-600'
+            }`}>
+              {scoreMessage}
+            </p>
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+              >
+                Back to Dashboard
+              </button>
+              <button
+                onClick={() => navigate('/assessment/recommendations')}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              >
+                View Recommendations
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

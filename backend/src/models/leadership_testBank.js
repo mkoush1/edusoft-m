@@ -9,14 +9,30 @@ const leadershipQuestionSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  section: {
+  competency: {
     type: String,
     required: true,
     enum: ['Vision', 'Ethics', 'Communication', 'Team Management', 'Decision Making', 'Emotional Intelligence', 'Adaptability', 'Innovation', 'Development']
   },
-  maxScore: {
-    type: Number,
-    default: 5
+  options: [{
+    letter: {
+      type: String,
+      required: true,
+      enum: ['A', 'B', 'C', 'D']
+    },
+    text: {
+      type: String,
+      required: true
+    }
+  }],
+  correctAnswer: {
+    type: String,
+    required: true,
+    enum: ['A', 'B', 'C', 'D']
+  },
+  reasoning: {
+    type: String,
+    required: true
   }
 });
 

@@ -245,4 +245,4 @@ export const signup = authService.userSignup;
 
 export { userService, supervisorService };
 
-export default api; 
+export { api }; 

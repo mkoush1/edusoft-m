@@ -20,7 +20,7 @@ const ProblemSolvingAssessment = () => {
       title: "Puzzle Game Assessment",
       description: "Solve engaging puzzles to demonstrate your logical thinking skills",
       category: "Problem Solving",
-      duration: 20,
+      duration: 4,
       image: "/eduSoft_logo.png"
     },
     {
