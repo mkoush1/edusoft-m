@@ -5,22 +5,49 @@ const AssessmentCard = ({ assessment }) => {
   const navigate = useNavigate();
 
   const handleAssessmentStart = () => {
+    console.log('Starting assessment:', assessment.category);
+    
     if (assessment.category === "Problem Solving") {
       if (assessment._id === "puzzle-game") {
         navigate("/assessment/puzzle-game");
       } else {
         navigate("/assessment/problem-solving");
       }
+    } else if (assessment.category === "presentation") {
+      // For presentation skills, navigate to the presentation assessment page
+      navigate("/presentation-assessment");
+    } else if (assessment.category === "Leadership") {
+      // For leadership, navigate directly to the quiz page
+      localStorage.setItem('currentQuizCategory', 'leadership');
+      navigate("/leadership-quiz");
     } else {
-      navigate(`/assessment/${assessment._id}`);
+      // For other assessments, navigate to the details page
+      navigate(`/assessment/category/${assessment.category.toLowerCase()}`);
     }
   };
 
+  console.log('Assessment category:', assessment.category);
+  const imagePath = assessment.category === "Adaptability and Flexibility" ? "/Adaptability-and-Flexibility.jpg" :
+    assessment.category === "Communication" ? "/Communication.jpeg" :
+    assessment.category === "Leadership" ? "/Leadership.avif" :
+    assessment.category === "Presentation" ? "/presentation-skills.jpg" :
+    assessment.category === "Problem Solving" ? "/Problem-Solving.jpg" :
+    assessment.category === "Team Work and Collaboration" ? "/Team-Work-and-Collaboration.jpeg" :
+    "/eduSoft_logo.png";
+  console.log('Image path:', imagePath);
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition duration-300 flex flex-col h-full">
       <div className="h-48 bg-gray-100">
         <img
-          src={assessment.image || "/eduSoft_logo.png"}
+          src={
+            assessment.category === "Adaptability and Flexibility" ? "/Adaptability-and-Flexibility.jpg" :
+            assessment.category === "Communication" ? "/Communication.jpeg" :
+            assessment.category === "Leadership" ? "/Leadership.avif" :
+            assessment.category === "Presentation" ? "/presentation-skills.jpg" :
+            assessment.category === "Problem Solving" ? "/Problem-Solving.jpg" :
+            assessment.category === "Team Work and Collaboration" ? "/Team-Work-and-Collaboration.jpeg" :
+            "/eduSoft_logo.png"
+          } onError={(e) => console.error(`Image failed to load for ${assessment.category}:`, e.target.src)}
           alt={assessment.title}
           className="w-full h-full object-cover"
         />

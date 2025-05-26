@@ -3,13 +3,14 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import User from '../models/User.js';
 import Supervisor from '../models/supervisor.model.js';
+import Admin from '../models/Admin.js';
 import { sendPasswordResetEmail } from '../services/emailService.js';
 import bcrypt from 'bcryptjs';
 
 const router = express.Router();
 
-// Middleware to verify JWT token
-export const verifyToken = (req, res, next) => {
+// Middleware to verify JWT token and role
+export const verifyToken = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   
   if (!token) {
@@ -19,35 +20,45 @@ export const verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
     req.userId = decoded.userId;
+    req.userRole = decoded.role;
+    
+    // Get user data based on role
+    let userData;
+    if (req.userRole === 'admin') {
+      userData = await Admin.findById(req.userId).select('-password');
+    } else if (req.userRole === 'supervisor') {
+      userData = await Supervisor.findById(req.userId).select('-Password');
+    } else {
+      userData = await User.findById(req.userId).select('-password');
+    }
+
+    if (!userData) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    req.userData = userData;
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Invalid token' });
   }
 };
 
+// Middleware to verify admin role
+export const verifyAdmin = (req, res, next) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ message: 'Admin access required' });
+  }
+  next();
+};
+
 // Get current user route
 router.get('/me', verifyToken, async (req, res) => {
   try {
-    // First try to find in User collection
-    let user = await User.findById(req.userId).select('-password');
-    let isSupervisor = false;
-
-    // If not found in User collection, check Supervisor collection
-    if (!user) {
-      user = await Supervisor.findById(req.userId).select('-Password');
-      isSupervisor = true;
-    }
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Format response based on user type
     const userResponse = {
-      id: user._id,
-      fullName: isSupervisor ? user.Username : user.fullName,
-      email: isSupervisor ? user.Email : user.email,
-      role: isSupervisor ? 'supervisor' : user.role,
+      id: req.userData._id,
+      name: req.userData.name || req.userData.Username,
+      email: req.userData.email || req.userData.Email,
+      role: req.userRole
     };
 
     res.json(userResponse);
@@ -245,6 +256,93 @@ router.post('/supervisor/signup', async (req, res) => {
     res.status(500).json({ 
       message: 'Error creating supervisor', 
       error: error.message
+    });
+  }
+});
+
+// Admin Login - Enhanced version with better debugging
+router.post('/admin/login', async (req, res) => {
+  try {
+    console.log('\n=== Admin Login Attempt ===');
+    console.log('Headers:', req.headers);
+    console.log('Request body:', req.body);
+    
+    const { email, password } = req.body;
+    
+    // Validate input
+    if (!email || !password) {
+      console.log('Missing email or password');
+      return res.status(400).json({ 
+        message: 'Email and password are required',
+        received: { email: !!email, password: !!password }
+      });
+    }
+
+    console.log('Login attempt for email:', email);
+    console.log('Password provided:', password ? 'Yes' : 'No');
+
+    // Find admin by email (case-insensitive)
+    const admin = await Admin.findOne({ 
+      email: email.toLowerCase().trim() 
+    }).select('+password');
+    
+    if (!admin) {
+      console.log('Admin not found for email:', email);
+      return res.status(401).json({ 
+        message: 'Invalid credentials', 
+        error: 'Admin not found' 
+      });
+    }
+
+    console.log('Found admin:', {
+      id: admin._id,
+      email: admin.email,
+      name: admin.name,
+      hasPassword: !!admin.password,
+      passwordLength: admin.password ? admin.password.length : 0
+    });
+
+    // Verify password using the admin's comparePassword method
+    const isValidPassword = await admin.comparePassword(password);
+    console.log('Final password validation result:', isValidPassword);
+    
+    if (!isValidPassword) {
+      console.log('Password mismatch for admin:', admin.email);
+      return res.status(401).json({ 
+        message: 'Invalid credentials', 
+        error: 'Password mismatch' 
+      });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: admin._id, role: 'admin' },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '24h' }
+    );
+
+    console.log('Login successful for admin:', admin.email);
+    console.log('Generated token:', token ? 'Yes' : 'No');
+
+    // Format response
+    const adminResponse = {
+      id: admin._id,
+      name: admin.name,
+      email: admin.email,
+      role: 'admin'
+    };
+
+    res.json({ 
+      token, 
+      user: adminResponse,
+      message: 'Login successful'
+    });
+
+  } catch (error) {
+    console.error('Admin login error:', error);
+    res.status(500).json({ 
+      message: 'Error logging in', 
+      error: error.message 
     });
   }
 });

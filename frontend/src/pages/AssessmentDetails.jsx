@@ -1,34 +1,83 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import LeadershipQuiz from "./LeadershipQuiz";
 // import '../styles/AssessmentDetails.css';
 
 const AssessmentDetails = () => {
-  const { id } = useParams();
+  const { category } = useParams();
   const navigate = useNavigate();
   const [assessment, setAssessment] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showQuiz, setShowQuiz] = useState(false);
 
   useEffect(() => {
     const fetchAssessment = async () => {
+      if (!category) {
+        console.error('No assessment category provided');
+        setError('No assessment category provided');
+        setLoading(false);
+        return;
+      }
+
       try {
         const response = await fetch(
-          `http://localhost:5000/api/assessments/${id}`
+          `http://localhost:5000/api/assessments/category/${category}`
         );
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        
+        if (!data) {
+          throw new Error('No data received from server');
+        }
+        
         setAssessment(data);
-        setLoading(false);
       } catch (error) {
         console.error("Error fetching assessment:", error);
+        setError(error.message || 'Failed to load assessment');
+      } finally {
         setLoading(false);
       }
     };
 
     fetchAssessment();
-  }, [id]);
+  }, [category]);
 
   const handleStartQuiz = () => {
-    navigate(`/assessment/quiz/${assessment.category.toLowerCase()}`);
+    console.log('handleStartQuiz called');
+    console.log('Assessment:', assessment);
+    
+    if (!assessment) {
+      console.error('Assessment is undefined');
+      return;
+    }
+    
+    if (!assessment.category) {
+      console.error('Assessment category is undefined');
+      return;
+    }
+    
+    const categoryValue = typeof assessment.category === 'string' ? assessment.category.toLowerCase() : '';
+    console.log('Starting quiz for category:', categoryValue);
+    
+    // Try using a direct path instead of a dynamic one for debugging
+    if (categoryValue === 'leadership') {
+      console.log('Navigating to leadership quiz directly');
+      navigate('/assessment/quiz/leadership');
+    } else {
+      console.log(`Navigating to quiz for category: ${categoryValue}`);
+      navigate(`/assessment/quiz/${categoryValue}`);
+    }
   };
+
+  // If showQuiz is true, render the LeadershipQuiz component
+  if (showQuiz) {
+    return <LeadershipQuiz />;
+  }
 
   if (loading) {
     return (
@@ -145,8 +194,14 @@ const AssessmentDetails = () => {
               >
                 Back to Dashboard
               </button>
+              
+              {/* Use a button that directly shows the quiz component */}
               <button
-                onClick={handleStartQuiz}
+                onClick={() => {
+                  console.log('Starting quiz for category:', assessment.category.toLowerCase());
+                  localStorage.setItem('currentQuizCategory', assessment.category.toLowerCase());
+                  setShowQuiz(true);
+                }}
                 className="flex-1 px-6 py-3 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300"
               >
                 Start Assessment
