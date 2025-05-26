@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import Assessment from '../src/models/Assessment.js';
+import Assessment from '../src/models/assessment.js';
 
 dotenv.config();
 

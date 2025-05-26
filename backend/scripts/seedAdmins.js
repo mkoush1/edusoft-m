@@ -16,7 +16,13 @@ const password = 'ammo.1234';
 
 async function seedAdmins() {
   try {
-    await mongoose.connect('mongodb+srv://edusoft:RALPBedvxKVF0El7@edusoft-cluster.way6fkv.mongodb.net/edusoft?retryWrites=true&w=majority&appName=EduSoft-Cluster');
+    // Use environment variable for MongoDB connection
+    if (!process.env.MONGODB_URI) {
+      console.error('MONGODB_URI environment variable is not set');
+      process.exit(1);
+    }
+    
+    await mongoose.connect(process.env.MONGODB_URI);
     console.log('Connected to MongoDB');
 
     // Create each admin user
