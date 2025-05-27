@@ -37,36 +37,6 @@ const CourseCard = ({
 const HomePage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const recommendedCourses = [
-    {
-      title: "Leadership Skills",
-      institution: "IIM Ahmedabad",
-      description:
-        "Gain comprehensive leadership skills with insights into mindfulness, inner stability, and positive strengths. Learn from top industry experts and develop essential management capabilities.",
-      duration: "46 hours",
-      link: "https://www.coursera.org/learn/leadershipskills",
-      image: "/leadership.jpeg",
-    },
-    {
-      title: "Leadership and Management",
-      institution: "Harvard Business School",
-      description:
-        "Develop your ability to lead with purpose and create value through a comprehensive exploration of leadership principles and organizational dynamics.",
-      duration: "6-8 weeks",
-      link: "https://online.hbs.edu/subjects/leadership-management/",
-      image: "/professional-woman.png",
-    },
-    {
-      title: "Leadership vs Management",
-      institution: "Oxford Home Study",
-      description:
-        "Understand the key differences between leadership and management while developing practical skills for organizational success.",
-      duration: "20 hours",
-      link: "https://www.oxfordhomestudy.com/courses/leadership-courses-online/leadership-v-management-free",
-      image: "/graduate.png",
-    },
-  ];
-
   return (
     <div className="min-h-screen flex flex-col bg-[#FDF8F8]">
       {/* Navbar */}
@@ -250,24 +220,6 @@ const HomePage = () => {
                   />
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Recommended Courses Section */}
-          <div className="mt-16 sm:mt-24">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl sm:text-4xl font-bold text-[#592538] mb-4">
-                Recommended Leadership Courses
-              </h2>
-              <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-                Enhance your leadership skills with these carefully selected
-                courses from world-renowned institutions.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {recommendedCourses.map((course, index) => (
-                <CourseCard key={index} {...course} />
-              ))}
             </div>
           </div>
         </div>

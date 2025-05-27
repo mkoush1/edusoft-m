@@ -7,6 +7,9 @@ import { decodeJWT } from "../utils/jwt";
 const ProgressPage = () => {
   const navigate = useNavigate();
   const [completedAssessments, setCompletedAssessments] = useState([]);
+  const [totalCompleted, setTotalCompleted] = useState(0);
+  const [totalAvailable, setTotalAvailable] = useState(0);
+  const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -45,6 +48,9 @@ const ProgressPage = () => {
 
         const completedData = response.data.data.completedAssessments || [];
         setCompletedAssessments(completedData);
+        setTotalCompleted(response.data.data.totalCompleted || 0);
+        setTotalAvailable(response.data.data.totalAvailable || 0);
+        setProgress(response.data.data.progress || 0);
       } catch (error) {
         console.error("Error fetching progress:", error);
         setError("Failed to fetch progress data. Please try again later.");
@@ -102,7 +108,7 @@ const ProgressPage = () => {
                 Overall Progress
               </h2>
               <span className="text-3xl sm:text-4xl font-bold text-[#592538]">
-                {Math.round((completedAssessments.length / 3) * 100)}%
+                {Math.round(progress)}%
               </span>
             </div>
 
@@ -111,7 +117,7 @@ const ProgressPage = () => {
                 Completed Assessments
               </h2>
               <span className="text-3xl sm:text-4xl font-bold text-[#592538]">
-                {completedAssessments.length}
+                {totalCompleted}
               </span>
             </div>
 

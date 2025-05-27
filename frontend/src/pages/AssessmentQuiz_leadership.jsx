@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 // import '../styles/AssessmentQuiz.css';
 import { submitAssessment } from "../services/api";
 
 const AssessmentQuiz = () => {
+  console.log('AssessmentQuiz component rendered');
+  
   const navigate = useNavigate();
+  const location = useLocation();
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -13,12 +16,27 @@ const AssessmentQuiz = () => {
   const [timeLeft, setTimeLeft] = useState(null);
   const [error, setError] = useState("");
 
+  // Always use 'leadership' as the category for this quiz
+  const category = "leadership";
+
   useEffect(() => {
+    // Use questions from navigation state if available
+    if (location.state && location.state.questions) {
+      setQuestions(location.state.questions);
+      setTimeLeft(45 * 60);
+      setLoading(false);
+      return;
+    }
+    // Fallback: fetch questions with POST if not provided (should rarely happen)
     const startAssessment = async () => {
       try {
-        const token = localStorage.getItem("token");
-        console.log("Starting assessment with token:", token);
+        if (!category) {
+          setError("No assessment category specified");
+          setLoading(false);
+          return;
+        }
 
+        const token = localStorage.getItem("token");
         if (!token) {
           setError("Please log in to take the assessment");
           setLoading(false);
@@ -26,7 +44,7 @@ const AssessmentQuiz = () => {
         }
 
         const response = await axios.post(
-          "http://localhost:5000/api/assessments/start/leadership",
+          `http://localhost:5000/api/assessments/start/${category}`,
           {},
           {
             headers: {
@@ -36,20 +54,14 @@ const AssessmentQuiz = () => {
           }
         );
 
-        console.log("API Response:", response.data);
-
         if (response.data && response.data.questions) {
-          console.log("Questions received:", response.data.questions);
           setQuestions(response.data.questions);
-          setTimeLeft(45 * 60); // 45 minutes in seconds
+          setTimeLeft(45 * 60);
         } else {
-          console.error("No questions in response:", response.data);
           setError("No questions available. Please try again later.");
         }
         setLoading(false);
       } catch (error) {
-        console.error("Error starting assessment:", error);
-        console.error("Error response:", error.response);
         setError(
           error.response?.data?.message ||
             "Error starting assessment. Please try again later."
@@ -57,9 +69,8 @@ const AssessmentQuiz = () => {
         setLoading(false);
       }
     };
-
     startAssessment();
-  }, []);
+  }, [category, location.state]);
 
   useEffect(() => {
     if (timeLeft === null) return;
@@ -78,13 +89,13 @@ const AssessmentQuiz = () => {
     return () => clearInterval(timer);
   }, [timeLeft]);
 
-  const handleAnswer = (score) => {
+  const handleAnswer = (option) => {
     const currentQuestion = questions[currentQuestionIndex];
     if (!currentQuestion) return;
 
     setAnswers({
       ...answers,
-      [currentQuestion.questionNumber]: score,
+      [currentQuestion.questionNumber]: option,
     });
   };
 
@@ -112,15 +123,15 @@ const AssessmentQuiz = () => {
       }
 
       // Format answers for submission
-      const formattedAnswers = Object.entries(answers).map(([questionNumber, score]) => ({
+      const formattedAnswers = Object.entries(answers).map(([questionNumber, answer]) => ({
         questionNumber: parseInt(questionNumber),
-        score: score
+        answer: answer
       }));
 
       console.log("Submitting answers:", formattedAnswers);
       
       const response = await axios.post(
-        "http://localhost:5000/api/assessments/submit/leadership",
+        `http://localhost:5000/api/assessments/submit/${category}`,
         {
           answers: formattedAnswers
         },
@@ -138,9 +149,6 @@ const AssessmentQuiz = () => {
       if (response.data.result && response.data.result.assessmentStatus) {
         localStorage.setItem('assessmentStatus', JSON.stringify(response.data.result.assessmentStatus));
       }
-
-      // Wait a moment to ensure the backend has processed the submission
-      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Navigate to recommendations page
       navigate("/assessment/leadership/recommendations");
@@ -201,29 +209,20 @@ const AssessmentQuiz = () => {
         </div>
 
         {/* Question Card */}
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-          {/* Progress Bar */}
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          {/* Progress */}
           <div className="mb-6">
             <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>
-                Question {currentQuestionIndex + 1} of {questions.length}
-              </span>
-              <span>
-                {Math.round(
-                  ((currentQuestionIndex + 1) / questions.length) * 100
-                )}
-                % Complete
-              </span>
+              <span>Question {currentQuestionIndex + 1} of {questions.length}</span>
+              <span>{currentQuestion.competency}</span>
             </div>
-            <div className="h-2 bg-gray-200 rounded-full">
+            <div className="w-full bg-gray-200 rounded-full h-2">
               <div
-                className="h-full bg-[#592538] rounded-full transition-all duration-300"
+                className="bg-[#592538] h-2 rounded-full transition-all duration-300"
                 style={{
-                  width: `${
-                    ((currentQuestionIndex + 1) / questions.length) * 100
-                  }%`,
+                  width: `${((currentQuestionIndex + 1) / questions.length) * 100}%`,
                 }}
-              />
+              ></div>
             </div>
           </div>
 
@@ -233,30 +232,25 @@ const AssessmentQuiz = () => {
               {currentQuestion.questionText}
             </h2>
 
-            {/* Rating Scale */}
-            <div className="space-y-6">
-              <div className="grid grid-cols-5 gap-3">
-                {[1, 2, 3, 4, 5].map((score) => (
-                  <button
-                    key={score}
-                    onClick={() => handleAnswer(score)}
-                    className={`
-                      py-3 rounded-lg text-lg font-medium transition duration-300
-                      ${
-                        answers[currentQuestion.questionNumber] === score
-                          ? "bg-[#592538] text-white"
-                          : "bg-gray-100 text-gray-600 hover:bg-[#592538]/10"
-                      }
-                    `}
-                  >
-                    {score}
-                  </button>
-                ))}
-              </div>
-              <div className="flex justify-between text-sm text-gray-600 px-1">
-                <span>Strongly Disagree</span>
-                <span>Strongly Agree</span>
-              </div>
+            {/* Options */}
+            <div className="space-y-4">
+              {currentQuestion.options.map((option) => (
+                <button
+                  key={option.letter}
+                  onClick={() => handleAnswer(option.letter)}
+                  className={`
+                    w-full p-4 text-left rounded-lg transition duration-300
+                    ${
+                      answers[currentQuestion.questionNumber] === option.letter
+                        ? "bg-[#592538] text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-[#592538]/10"
+                    }
+                  `}
+                >
+                  <span className="font-medium mr-2">{option.letter}.</span>
+                  {option.text}
+                </button>
+              ))}
             </div>
           </div>
 

@@ -28,6 +28,16 @@ export const createSupervisor = async (req, res) => {
       });
     }
 
+    // Validate password strength
+    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+    if (!strongPasswordRegex.test(Password)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character',
+        field: 'Password'
+      });
+    }
+
     const newSupervisor = new Supervisor({
       Username: Username.trim(),
       Email: Email.toLowerCase().trim(),
@@ -100,20 +110,25 @@ export const getSupervisorById = async (req, res) => {
 
 export const updateSupervisor = async (req, res) => {
   try {
-    const updatedSupervisor = await Supervisor.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (!updatedSupervisor) {
+    const supervisor = await Supervisor.findById(req.params.id);
+    if (!supervisor) {
       return res.status(404).json({
         success: false,
         message: "Supervisor not found",
       });
     }
+
+    // Update fields
+    Object.keys(req.body).forEach((key) => {
+      supervisor[key] = req.body[key];
+    });
+
+    // If password is being updated, hash it (handled by pre-save hook)
+    await supervisor.save();
+
     res.status(200).json({
       success: true,
-      data: updatedSupervisor,
+      data: supervisor,
     });
   } catch (error) {
     res.status(400).json({

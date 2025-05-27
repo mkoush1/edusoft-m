@@ -1,10 +1,11 @@
 import express from 'express';
-import User from '../models/User.js';
+import User from '../models/user.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Get user profile
-router.get('/profile', async (req, res) => {
+router.get('/profile', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('-password');
     if (!user) {
@@ -17,18 +18,28 @@ router.get('/profile', async (req, res) => {
 });
 
 // Update user profile
-router.put('/profile', async (req, res) => {
+router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const { fullName, email } = req.body;
+    const { name, email, currentPassword, newPassword } = req.body;
     const user = await User.findById(req.userId);
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    user.fullName = fullName || user.fullName;
-    user.email = email || user.email;
-    
+    // Update name/email
+    if (name) user.name = name;
+    if (email) user.email = email;
+
+    // Handle password change
+    if (currentPassword && newPassword) {
+      const isMatch = await user.matchPassword(currentPassword);
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Current password is incorrect' });
+      }
+      user.password = newPassword;
+    }
+
     await user.save();
     res.json({ message: 'Profile updated successfully' });
   } catch (error) {

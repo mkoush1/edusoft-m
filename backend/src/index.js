@@ -2,10 +2,12 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fileUpload from 'express-fileupload';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/user.js';
 import assessmentRoutes from './routes/assessmentRoutes.js';
 import puzzleRoutes from './routes/puzzleRoutes.js';
+import presentationAssessmentRoutes from './routes/presentationAssessment.routes.js';
 
 // Load environment variables
 dotenv.config();
@@ -17,6 +19,14 @@ const app = express();
 
 // Middleware
 app.use(express.json());
+
+// File upload middleware
+app.use(fileUpload({
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max file size
+  useTempFiles: true,
+  tempFileDir: '/tmp/',
+  debug: true // Enable debug mode for troubleshooting
+}));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -41,6 +51,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/assessments', assessmentRoutes);
 app.use('/api/puzzle', puzzleRoutes);
+app.use('/api/assessments/presentation', presentationAssessmentRoutes);
 
 // Connect to MongoDB
 const connectDB = async () => {
@@ -52,17 +63,17 @@ const connectDB = async () => {
 
     console.log('Attempting to connect to MongoDB...');
     console.log('Using URI:', process.env.MONGODB_URI.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@')); // Hide credentials in logs
-    
+
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
     });
-    
+
     console.log(`MongoDB Connected: ${conn.connection.host}`);
     console.log(`Database Name: ${conn.connection.name}`);
-    
+
     // Verify connection by listing collections
     const collections = await conn.connection.db.listCollections().toArray();
     console.log('Available collections:', collections.map(c => c.name));

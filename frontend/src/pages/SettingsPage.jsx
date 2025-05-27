@@ -91,6 +91,15 @@ const SettingsPage = () => {
         },
       });
 
+      if (userData.newPassword) {
+        setSuccess("Password updated successfully. Logging out...");
+        setTimeout(() => {
+          localStorage.removeItem("token");
+          window.location.href = "/login";
+        }, 1500);
+        return;
+      }
+
       setSuccess("Profile updated successfully");
       setUserData((prev) => ({
         ...prev,

@@ -1,15 +1,16 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import User from '../models/User.js';
+import User from '../models/user.js';
 import Supervisor from '../models/supervisor.model.js';
-import { sendPasswordResetEmail } from '../services/emailService.js';
+import { sendConfirmationEmail } from '../services/emailService.js';
 import bcrypt from 'bcryptjs';
+import Admin from '../models/Admin.js';
 
 const router = express.Router();
 
-// Middleware to verify JWT token
-export const verifyToken = (req, res, next) => {
+// Middleware to verify JWT token and role
+export const verifyToken = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   
   if (!token) {
@@ -19,35 +20,45 @@ export const verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
     req.userId = decoded.userId;
+    req.userRole = decoded.role;
+    
+    // Get user data based on role
+    let userData;
+    if (req.userRole === 'admin') {
+      userData = await Admin.findById(req.userId).select('-password');
+    } else if (req.userRole === 'supervisor') {
+      userData = await Supervisor.findById(req.userId).select('-Password');
+    } else {
+      userData = await User.findById(req.userId).select('-password');
+    }
+
+    if (!userData) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    req.userData = userData;
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Invalid token' });
   }
 };
 
+// Middleware to verify admin role
+export const verifyAdmin = (req, res, next) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ message: 'Admin access required' });
+  }
+  next();
+};
+
 // Get current user route
 router.get('/me', verifyToken, async (req, res) => {
   try {
-    // First try to find in User collection
-    let user = await User.findById(req.userId).select('-password');
-    let isSupervisor = false;
-
-    // If not found in User collection, check Supervisor collection
-    if (!user) {
-      user = await Supervisor.findById(req.userId).select('-Password');
-      isSupervisor = true;
-    }
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Format response based on user type
     const userResponse = {
-      id: user._id,
-      fullName: isSupervisor ? user.Username : user.fullName,
-      email: isSupervisor ? user.Email : user.email,
-      role: isSupervisor ? 'supervisor' : user.role,
+      id: req.userData._id,
+      name: req.userData.name || req.userData.Username,
+      email: req.userData.email || req.userData.Email,
+      role: req.userRole
     };
 
     res.json(userResponse);
@@ -131,6 +142,10 @@ router.post('/user/signup', async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    // Generate email verification token and expiry
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+    const emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+
     // Create new user
     const newUser = new User({
       name,
@@ -139,7 +154,10 @@ router.post('/user/signup', async (req, res) => {
       role: role || 'student',
       softSkillScore: 0,
       progress: 0,
-      userId: Math.floor(100000 + Math.random() * 900000)
+      userId: Math.floor(100000 + Math.random() * 900000),
+      emailVerificationToken,
+      emailVerificationExpires,
+      isEmailVerified: false
     });
 
     // Validate the user document before saving
@@ -158,16 +176,19 @@ router.post('/user/signup', async (req, res) => {
     await newUser.save();
     console.log('New user created:', newUser.email);
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: newUser._id, role: newUser.role },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' }
-    );
+    // Send confirmation email
+    try {
+      const verificationUrl = `${process.env.FRONTEND_URL}/confirm-email/${emailVerificationToken}`;
+      console.log('Verification URL:', verificationUrl);
+      await sendConfirmationEmail(newUser.email, verificationUrl);
+      console.log('Confirmation email sent successfully to:', newUser.email);
+    } catch (emailError) {
+      console.error('Error sending confirmation email:', emailError);
+      // Don't fail the signup if email fails
+    }
 
     res.status(201).json({
-      message: 'User created successfully',
-      token,
+      message: 'User created successfully. Please check your email to verify your account.',
       user: {
         id: newUser._id,
         name: newUser.name,
@@ -181,6 +202,49 @@ router.post('/user/signup', async (req, res) => {
       message: 'Error creating user', 
       error: error.message
     });
+  }
+});
+
+// Email confirmation route with detailed logging
+router.get('/user/confirm-email/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    console.log('Received email confirmation request for token:', token);
+    let user = await User.findOne({
+      emailVerificationToken: token
+    });
+
+    if (!user) {
+      return res.status(200).json({ message: 'This confirmation link is invalid or has already been used. Redirecting to login...', alreadyVerified: false });
+    }
+
+    if (!user.isEmailVerified) {
+      try {
+        const result = await User.updateOne(
+          { _id: user._id },
+          {
+            $set: {
+              isEmailVerified: true,
+              emailVerificationToken: undefined,
+              emailVerificationExpires: undefined
+            }
+          }
+        );
+        console.log('User email verified and updated directly in DB:', user.email);
+        console.log('Update result:', result);
+        return res.status(200).json({ message: 'Email confirmed successfully! You can now log in.', user: { email: user.email }, updateResult: result });
+      } catch (updateErr) {
+        console.error('Error updating user after email verification:', updateErr);
+        return res.status(500).json({ message: 'Error updating user after verification', error: updateErr.message });
+      }
+    } else {
+      console.log('User already verified:', user.email);
+    }
+
+    return res.status(200).json({ message: 'Email confirmed successfully! You can now log in.', user: { email: user.email } });
+  } catch (err) {
+    console.error('Error in email confirmation route:', err);
+    res.status(500).json({ message: 'Server error during email confirmation.' });
   }
 });
 
@@ -212,27 +276,35 @@ router.post('/supervisor/signup', async (req, res) => {
     }
 
     // Create new supervisor with auto-generated IDs
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+    const emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
     const newSupervisor = new Supervisor({
       Username: fullName.trim(),
       Email: email.toLowerCase().trim(),
       Password: password,
       UserID: Math.floor(100000 + Math.random() * 900000),
-      supervisorId: Math.floor(100000 + Math.random() * 900000)
+      supervisorId: Math.floor(100000 + Math.random() * 900000),
+      emailVerificationToken,
+      emailVerificationExpires,
+      isEmailVerified: false
     });
 
     await newSupervisor.save();
     console.log('New supervisor created:', newSupervisor.Email);
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: newSupervisor._id, role: 'supervisor' },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' }
-    );
+    // Send confirmation email
+    try {
+      const backendUrl = process.env.BACKEND_URL || "http://localhost:5000";
+      const verificationUrl = `${backendUrl}/api/auth/supervisor/confirm-email/${emailVerificationToken}`;
+      await sendConfirmationEmail(newSupervisor.Email, verificationUrl);
+      console.log('Confirmation email sent successfully to supervisor:', newSupervisor.Email);
+    } catch (emailError) {
+      console.error('Error sending supervisor confirmation email:', emailError);
+      // Don't fail the signup if email fails
+    }
 
     res.status(201).json({
-      message: 'Supervisor created successfully',
-      token,
+      message: 'Supervisor created successfully. Please check your email to verify your account.',
       supervisor: {
         id: newSupervisor._id,
         fullName: newSupervisor.Username,
@@ -245,6 +317,93 @@ router.post('/supervisor/signup', async (req, res) => {
     res.status(500).json({ 
       message: 'Error creating supervisor', 
       error: error.message
+    });
+  }
+});
+
+// Admin Login - Enhanced version with better debugging
+router.post('/admin/login', async (req, res) => {
+  try {
+    console.log('\n=== Admin Login Attempt ===');
+    console.log('Headers:', req.headers);
+    console.log('Request body:', req.body);
+    
+    const { email, password } = req.body;
+    
+    // Validate input
+    if (!email || !password) {
+      console.log('Missing email or password');
+      return res.status(400).json({ 
+        message: 'Email and password are required',
+        received: { email: !!email, password: !!password }
+      });
+    }
+
+    console.log('Login attempt for email:', email);
+    console.log('Password provided:', password ? 'Yes' : 'No');
+
+    // Find admin by email (case-insensitive)
+    const admin = await Admin.findOne({ 
+      email: email.toLowerCase().trim() 
+    }).select('+password');
+    
+    if (!admin) {
+      console.log('Admin not found for email:', email);
+      return res.status(401).json({ 
+        message: 'Invalid credentials', 
+        error: 'Admin not found' 
+      });
+    }
+
+    console.log('Found admin:', {
+      id: admin._id,
+      email: admin.email,
+      name: admin.name,
+      hasPassword: !!admin.password,
+      passwordLength: admin.password ? admin.password.length : 0
+    });
+
+    // Verify password using the admin's comparePassword method
+    const isValidPassword = await admin.comparePassword(password);
+    console.log('Final password validation result:', isValidPassword);
+    
+    if (!isValidPassword) {
+      console.log('Password mismatch for admin:', admin.email);
+      return res.status(401).json({ 
+        message: 'Invalid credentials', 
+        error: 'Password mismatch' 
+      });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: admin._id, role: 'admin' },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '24h' }
+    );
+
+    console.log('Login successful for admin:', admin.email);
+    console.log('Generated token:', token ? 'Yes' : 'No');
+
+    // Format response
+    const adminResponse = {
+      id: admin._id,
+      name: admin.name,
+      email: admin.email,
+      role: 'admin'
+    };
+
+    res.json({ 
+      token, 
+      user: adminResponse,
+      message: 'Login successful'
+    });
+
+  } catch (error) {
+    console.error('Admin login error:', error);
+    res.status(500).json({ 
+      message: 'Error logging in', 
+      error: error.message 
     });
   }
 });
@@ -282,6 +441,14 @@ router.post('/user/login', async (req, res) => {
       return res.status(401).json({ 
         message: 'Invalid credentials',
         details: 'Email or password is incorrect'
+      });
+    }
+
+    // Require email verification for students
+    if (!user.isEmailVerified) {
+      return res.status(401).json({ 
+        message: 'Please verify your email first',
+        email: user.email
       });
     }
 
@@ -323,6 +490,11 @@ router.post('/supervisor/login', async (req, res) => {
     });
     
     console.log('Supervisor lookup result:', supervisor ? 'Found' : 'Not found');
+    if (supervisor) {
+      console.log('Supervisor full object:', supervisor);
+      console.log('Supervisor stored password hash:', supervisor.Password);
+      console.log('Password provided by user:', password);
+    }
     
     if (!supervisor) {
       console.log('Supervisor not found for email:', email);
@@ -332,13 +504,14 @@ router.post('/supervisor/login', async (req, res) => {
       });
     }
 
-    console.log('Supervisor found:', {
-      id: supervisor._id,
-      email: supervisor.Email,
-      username: supervisor.Username,
-      hasPassword: !!supervisor.Password,
-      passwordLength: supervisor.Password ? supervisor.Password.length : 0
-    });
+    // Check if email is verified
+    if (!supervisor.isEmailVerified) {
+      console.log('Login failed: Supervisor email not verified');
+      return res.status(401).json({ 
+        message: 'Please verify your email first',
+        email: supervisor.Email
+      });
+    }
 
     const isMatch = await supervisor.comparePassword(password);
     console.log('Password comparison result:', isMatch);
@@ -512,7 +685,10 @@ router.post('/reset-password', async (req, res) => {
     console.log('User found, resetting password');
     // Handle different password field names for User and Supervisor
     if (userType === 'supervisor') {
-      user.Password = password;
+      const bcrypt = require('bcryptjs');
+      const hashed = await bcrypt.hash(password, 10);
+      console.log('Resetting supervisor password:', { plain: password, hash: hashed });
+      user.Password = hashed;
     } else {
       user.password = password;
     }
@@ -526,6 +702,33 @@ router.post('/reset-password', async (req, res) => {
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ message: 'Error resetting password' });
+  }
+});
+
+// Supervisor email confirmation route
+router.get('/supervisor/confirm-email/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    let supervisor = await Supervisor.findOne({
+      emailVerificationToken: token
+    });
+
+    if (!supervisor) {
+      return res.status(200).json({ message: 'This confirmation link is invalid or has already been used. Redirecting to login...', alreadyVerified: false });
+    }
+
+    if (!supervisor.isEmailVerified) {
+      supervisor.isEmailVerified = true;
+      supervisor.emailVerificationToken = undefined;
+      supervisor.emailVerificationExpires = undefined;
+      await supervisor.save();
+      console.log('Supervisor email verified:', supervisor.Email);
+    }
+
+    return res.status(200).json({ message: 'Email confirmed successfully! You can now log in.', user: { email: supervisor.Email } });
+  } catch (err) {
+    console.error('Error in supervisor email confirmation route:', err);
+    res.status(500).json({ message: 'Server error during email confirmation.' });
   }
 });
 

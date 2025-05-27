@@ -29,7 +29,14 @@ const supervisorSchema = new mongoose.Schema({
     },
     Password: {
         type: String,
-        required: true
+        required: true,
+        minlength: [8, 'Password must be at least 8 characters long'],
+        validate: {
+            validator: function(v) {
+                return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/.test(v);
+            },
+            message: 'Password must include uppercase, lowercase, number, and special character'
+        }
     },
     resetToken: {
         type: String,
@@ -38,6 +45,16 @@ const supervisorSchema = new mongoose.Schema({
     resetTokenExpiry: {
         type: Date,
         default: undefined
+    },
+    isEmailVerified: {
+        type: Boolean,
+        default: false
+    },
+    emailVerificationToken: {
+        type: String
+    },
+    emailVerificationExpires: {
+        type: Date
     }
 }, {
     timestamps: true

@@ -129,12 +129,16 @@ export const sendConfirmationEmail = async (email, verificationUrl) => {
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: 'Email Verification',
+    subject: 'Confirm your EduSoft account',
     html: `
-      <h1>Email Verification</h1>
-      <p>Please click the link below to verify your email address:</p>
-      <a href="${verificationUrl}">Verify Email</a>
+      <h1>Welcome to EduSoft!</h1>
+      <p>Thank you for signing up! Please confirm your email address by clicking the link below:</p>
+      <p><a href="${verificationUrl}" style="background:#592538;color:#fff;padding:10px 20px;text-decoration:none;border-radius:5px;">Verify Email</a></p>
+      <p>If the button above does not work, copy and paste this link into your browser:</p>
+      <p><a href="${verificationUrl}">${verificationUrl}</a></p>
       <p>This link will expire in 24 hours.</p>
+      <hr />
+      <p>If you did not create an account, you can safely ignore this email.</p>
     `
   };
 

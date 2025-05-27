@@ -4,11 +4,118 @@ import TestQuestion from '../models/TestQuestion.js';
 import LeadershipQuestion from '../models/leadership_testBank.js';
 import AssessmentResult from '../models/AssessmentResult.js';
 import { authenticateToken } from '../middleware/auth.js';
-import User from '../models/User.js';
+import User from '../models/user.js';
 import ProblemSolvingAssessment from '../models/ProblemSolvingAssessment.js';
+import ProblemSolvingQuestion from '../models/problemSolvingQuestionBank.js';
 import Puzzle from '../models/Puzzle.js';
+import PresentationQuestion from '../models/PresentationQuestion.js';
+import PresentationSubmission from '../models/PresentationSubmission.js';
+import AdaptabilityAssessmentQuestion from '../models/AdaptabilityAssessmentQuestion.js';
 
 const router = express.Router();
+
+// Initialize default presentation questions if none exist
+router.post('/presentation/init', async (req, res) => {
+  try {
+    const count = await PresentationQuestion.countDocuments();
+    if (count === 0) {
+      const defaultQuestions = [
+        {
+          questionNumber: 1,
+          question: "Please introduce yourself and tell us about your background.",
+          description: "Share your educational and professional background, highlighting key experiences and achievements.",
+          preparationTime: 120,
+          recordingTime: 120
+        },
+        {
+          questionNumber: 2,
+          question: "What leadership experience do you have and how has it shaped you?",
+          description: "Discuss specific leadership roles you've held and how they've influenced your leadership style.",
+          preparationTime: 120,
+          recordingTime: 120
+        },
+        {
+          questionNumber: 3,
+          question: "Describe a challenging situation you faced and how you overcame it.",
+          description: "Explain the situation, your role, the actions you took, and the outcome.",
+          preparationTime: 120,
+          recordingTime: 120
+        }
+      ];
+
+      await PresentationQuestion.insertMany(defaultQuestions);
+      res.json({ message: 'Default presentation questions initialized successfully' });
+    } else {
+      res.json({ message: 'Presentation questions already exist' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Error initializing presentation questions', error: error.message });
+  }
+});
+
+// Get all presentation questions
+router.get('/presentation/questions', async (req, res) => {
+  try {
+    const questions = await PresentationQuestion.find({}).sort({ questionNumber: 1 });
+    const questionMap = questions.reduce((acc, question) => {
+      acc[question.questionNumber] = {
+        question: question.question,
+        description: question.description,
+        preparationTime: question.preparationTime,
+        recordingTime: question.recordingTime
+      };
+      return acc;
+    }, {});
+    res.json(questionMap);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching presentation questions', error: error.message });
+  }
+});
+
+// Get presentation questions
+router.get('/presentation/questions', authenticateToken, async (req, res) => {
+  try {
+    const questions = await PresentationQuestion.find({})
+      .sort({ questionNumber: 1 })
+      .lean();
+
+    // Convert questions to object with questionNumber as key
+    const questionsObj = {};
+    questions.forEach(q => {
+      questionsObj[q.questionNumber] = {
+        question: q.question,
+        description: q.description,
+        preparationTime: q.preparationTime,
+        recordingTime: q.recordingTime
+      };
+    });
+
+    res.json(questionsObj);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching presentation questions', error: error.message });
+  }
+});
+
+// Get single presentation question
+router.get('/presentation/question/:questionNumber', authenticateToken, async (req, res) => {
+  try {
+    const { questionNumber } = req.params;
+    const question = await PresentationQuestion.findOne({ questionNumber: parseInt(questionNumber) });
+    
+    if (!question) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+
+    res.json({
+      question: question.question,
+      description: question.description,
+      preparationTime: question.preparationTime,
+      recordingTime: question.recordingTime
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching question', error: error.message });
+  }
+});
 
 // Helper function to generate a solvable puzzle
 const generatePuzzle = (size = 3) => {
@@ -17,7 +124,7 @@ const generatePuzzle = (size = 3) => {
     const numbers = Array.from({ length: size * size - 1 }, (_, i) => i + 1);
     const shuffled = numbers.sort(() => Math.random() - 0.5);
     const grid = [];
-    
+
     for (let i = 0; i < size; i++) {
       grid[i] = [];
       for (let j = 0; j < size; j++) {
@@ -25,7 +132,7 @@ const generatePuzzle = (size = 3) => {
         grid[i][j] = index < shuffled.length ? shuffled[index] : 0;
       }
     }
-    
+
     console.log('Generated puzzle grid:', grid);
     return grid;
   } catch (error) {
@@ -260,9 +367,9 @@ router.post('/submit/leadership', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'No questions found for scoring' });
     }
 
-    // Calculate section scores
-    const sectionScores = {};
-    const sectionMaxScores = {};
+    // Calculate competency scores
+    const competencyScores = {};
+    const competencyMaxScores = {};
 
     questions.forEach(question => {
       const answer = answers.find(a => a.questionNumber === question.questionNumber);
@@ -270,32 +377,52 @@ router.post('/submit/leadership', authenticateToken, async (req, res) => {
         throw new Error(`Missing answer for question ${question.questionNumber}`);
       }
 
-      if (!sectionScores[question.section]) {
-        sectionScores[question.section] = 0;
-        sectionMaxScores[question.section] = 0;
+      if (!competencyScores[question.competency]) {
+        competencyScores[question.competency] = 0;
+        competencyMaxScores[question.competency] = 0;
       }
 
-      sectionScores[question.section] += answer.score;
-      sectionMaxScores[question.section] += question.maxScore;
+      // Debug logging for each question
+      console.log(`Question ${question.questionNumber}:`, {
+        userAnswer: answer.answer,
+        correctAnswer: question.correctAnswer,
+        competency: question.competency
+      });
+
+      // Score is 1 if answer is correct, 0 if incorrect
+      const score = answer.answer === question.correctAnswer ? 1 : 0;
+      console.log(`Score for question ${question.questionNumber}:`, score);
+
+      competencyScores[question.competency] += score;
+      competencyMaxScores[question.competency] += 1;
     });
 
     // Calculate total scores
-    const totalScore = Object.values(sectionScores).reduce((a, b) => a + b, 0);
-    const maxTotalScore = Object.values(sectionMaxScores).reduce((a, b) => a + b, 0);
+    const totalScore = Object.values(competencyScores).reduce((a, b) => a + b, 0);
+    const maxTotalScore = Object.values(competencyMaxScores).reduce((a, b) => a + b, 0);
     const percentage = (totalScore / maxTotalScore) * 100;
 
-    // Format section scores for storage
-    const formattedSectionScores = Object.keys(sectionScores).map(section => ({
-      section,
-      score: sectionScores[section],
-      maxScore: sectionMaxScores[section]
+    console.log('Final scores:', {
+      competencyScores,
+      competencyMaxScores,
+      totalScore,
+      maxTotalScore,
+      percentage
+    });
+
+    // Format competency scores for storage
+    const formattedCompetencyScores = Object.keys(competencyScores).map(competency => ({
+      competency,
+      score: competencyScores[competency],
+      maxScore: competencyMaxScores[competency],
+      percentage: (competencyScores[competency] / competencyMaxScores[competency]) * 100
     }));
 
     console.log('Calculated scores:', {
       totalScore,
       maxTotalScore,
       percentage,
-      sectionScores: formattedSectionScores
+      competencyScores: formattedCompetencyScores
     });
 
     // Save assessment result
@@ -303,7 +430,7 @@ router.post('/submit/leadership', authenticateToken, async (req, res) => {
       userId,
       assessmentType: 'leadership',
       answers,
-      sectionScores: formattedSectionScores,
+      competencyScores: formattedCompetencyScores,
       totalScore,
       maxTotalScore,
       percentage,
@@ -320,41 +447,31 @@ router.post('/submit/leadership', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if user has already completed this assessment
-    const existingAssessmentIndex = user.completedAssessments.findIndex(
-      a => a.assessmentType === 'leadership'
-    );
+    // Always add a new completion and increment the count
+    user.completedAssessments.push({
+      assessmentType: 'leadership',
+      completedAt: new Date(),
+      score: percentage
+    });
+    user.totalAssessmentsCompleted += 1;
 
-    if (existingAssessmentIndex !== -1) {
-      // Update existing assessment score
-      user.completedAssessments[existingAssessmentIndex] = {
-        assessmentType: 'leadership',
-        completedAt: new Date(),
-        score: percentage
-      };
-    } else {
-      // Add new completion
-      user.completedAssessments.push({
-        assessmentType: 'leadership',
-        completedAt: new Date(),
-        score: percentage
-      });
-      user.totalAssessmentsCompleted += 1;
-    }
-    
     // Update progress
     const totalAssessments = await Assessment.countDocuments();
     user.progress = Math.min(100, (user.totalAssessmentsCompleted / totalAssessments) * 100);
-    
+
     await user.save();
     console.log('User progress updated successfully');
 
     // Get updated assessment status for response
     const availableAssessments = await Assessment.find();
     const completedAssessmentTypes = user.completedAssessments.map(a => a.assessmentType);
-    const remainingAssessments = availableAssessments.filter(
-      assessment => !completedAssessmentTypes.includes(assessment.category)
-    );
+    const assessmentStatus = availableAssessments.map(assessment => ({
+      type: assessment.category,
+      title: assessment.title,
+      description: assessment.description,
+      completed: completedAssessmentTypes.includes(assessment.category),
+      score: user.completedAssessments.find(a => a.assessmentType === assessment.category)?.score || null
+    }));
 
     res.json({
       message: 'Assessment submitted successfully',
@@ -362,22 +479,13 @@ router.post('/submit/leadership', authenticateToken, async (req, res) => {
         totalScore,
         maxTotalScore,
         percentage,
-        sectionScores: formattedSectionScores,
-        assessmentStatus: {
-          availableAssessments: remainingAssessments,
-          completedAssessments: user.completedAssessments,
-          totalAvailable: remainingAssessments.length,
-          totalCompleted: user.totalAssessmentsCompleted,
-          progress: user.progress
-        }
+        competencyScores: formattedCompetencyScores,
+        assessmentStatus
       }
     });
   } catch (error) {
     console.error('Error submitting assessment:', error);
-    res.status(500).json({
-      message: 'Error submitting assessment',
-      error: error.message
-    });
+    res.status(500).json({ message: 'Error submitting assessment', error: error.message });
   }
 });
 
@@ -425,11 +533,11 @@ router.get('/status/:userId', authenticateToken, async (req, res) => {
   try {
     const userId = req.params.userId;
     console.log('Getting assessment status for user:', userId);
-    
+
     // Get all available assessments
     const availableAssessments = await Assessment.find();
     console.log('Available assessments:', availableAssessments.length);
-    
+
     // Get user's completed assessments
     const user = await User.findById(userId);
     if (!user) {
@@ -441,10 +549,10 @@ router.get('/status/:userId', authenticateToken, async (req, res) => {
     }
     console.log('User found:', user._id);
     console.log('Completed assessments:', user.completedAssessments);
-    
+
     const completedAssessmentTypes = user.completedAssessments.map(a => a.assessmentType);
     console.log('Completed assessment types:', completedAssessmentTypes);
-    
+
     // Filter out completed assessments
     const remainingAssessments = availableAssessments.filter(
       assessment => !completedAssessmentTypes.includes(assessment.category)
@@ -503,8 +611,8 @@ router.post('/start/puzzle-game', authenticateToken, async (req, res) => {
       });
 
       if (puzzle) {
-        return res.json({ 
-          success: true, 
+        return res.json({
+          success: true,
           data: {
             assessment: existingAssessment,
             puzzle
@@ -546,7 +654,7 @@ router.post('/start/puzzle-game', authenticateToken, async (req, res) => {
     // Generate initial puzzle state
     const initialState = generatePuzzle(3);
     console.log('Generated initial puzzle state:', initialState);
-    
+
     // Start a new puzzle game
     const puzzle = new Puzzle({
       userId,
@@ -571,8 +679,8 @@ router.post('/start/puzzle-game', authenticateToken, async (req, res) => {
     });
     await assessment.save();
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: {
         assessment,
         puzzle
@@ -586,8 +694,8 @@ router.post('/start/puzzle-game', authenticateToken, async (req, res) => {
       message: error.message,
       code: error.code
     });
-    res.status(500).json({ 
-      message: 'Error starting assessment', 
+    res.status(500).json({
+      message: 'Error starting assessment',
       error: error.message,
       details: error.stack
     });
@@ -680,7 +788,7 @@ router.post('/submit/puzzle-game', authenticateToken, async (req, res) => {
     // Update progress
     const totalAssessments = await Assessment.countDocuments();
     user.progress = Math.min(100, (user.totalAssessmentsCompleted / totalAssessments) * 100);
-    
+
     await user.save();
 
     // Create new assessment result
@@ -739,12 +847,321 @@ router.post('/submit/puzzle-game', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error submitting puzzle game assessment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error submitting assessment',
+      error: error.message
+    });
+  }
+});
+
+// Import the presentation assessment controller
+import { submitPresentation } from '../controllers/presentationAssessment.controller.js';
+
+// Submit presentation assessment video
+router.post("/presentation/submit", authenticateToken, submitPresentation);
+
+// Check if user has completed presentation assessment
+router.get('/presentation/check-completion', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId;
+    console.log('Checking completion for user:', userId);
+
+    // Count the number of submissions for this user
+    const submissionCount = await PresentationSubmission.countDocuments({ userId });
+    console.log('Found submissions:', submissionCount);
+
+    res.json({
+      completed: submissionCount >= 3,
+      submissionCount
+    });
+  } catch (error) {
+    console.error('Error checking completion:', error);
     res.status(500).json({ 
       success: false,
-      message: 'Error submitting assessment', 
+      message: 'Error checking completion status', 
       error: error.message 
     });
   }
 });
 
-export default router; 
+// Get user's presentation submissions
+router.get('/presentation/submissions', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId;
+    console.log('Fetching submissions for user:', userId);
+
+    const submissions = await PresentationSubmission.find({ userId })
+      .sort({ submittedAt: -1 });
+
+    res.json({
+      success: true,
+      data: submissions
+    });
+  } catch (error) {
+    console.error('Error fetching submissions:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error fetching submissions', 
+      error: error.message 
+    });
+  }
+});
+
+// Start adaptability assessment
+router.post('/start/adaptability', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    // Check if user has already completed the assessment
+    const existingResult = await AssessmentResult.findOne({
+      userId,
+      assessmentType: 'adaptability'
+    });
+
+    if (existingResult) {
+      return res.status(400).json({ message: 'You have already completed this assessment' });
+    }
+
+    // Get adaptability questions
+    const questions = await AdaptabilityAssessmentQuestion.find({}).sort('questionNumber');
+
+    if (!questions || questions.length === 0) {
+      return res.status(404).json({ message: 'No questions available' });
+    }
+
+    res.json({ questions });
+  } catch (error) {
+    console.error('Error starting adaptability assessment:', error);
+    res.status(500).json({ message: 'Error starting assessment', error: error.message });
+  }
+});
+
+// Submit adaptability assessment
+router.post('/submit/adaptability', authenticateToken, async (req, res) => {
+  try {
+    const { answers } = req.body;
+    const userId = req.userId;
+
+    // Debug: Log received answers
+    console.log('[DEBUG] Received adaptability answers:', JSON.stringify(answers, null, 2));
+
+    // Validate answers
+    if (!Array.isArray(answers) || answers.length === 0) {
+      return res.status(400).json({ message: 'Invalid answers format' });
+    }
+
+    // Get all questions to calculate scores
+    const questions = await AdaptabilityAssessmentQuestion.find({}).sort('questionNumber');
+
+    // Debug: Log fetched questions
+    console.log('[DEBUG] Fetched adaptability questions:', questions.length);
+
+    if (!questions || questions.length === 0) {
+      return res.status(404).json({ message: 'No questions found for scoring' });
+    }
+
+    // Calculate section scores
+    const sectionScores = {};
+    const sectionMaxScores = {};
+
+    questions.forEach(question => {
+      const answer = answers.find(a => a.questionNumber === question.questionNumber);
+      if (!answer) {
+        console.error(`[ERROR] Missing answer for question ${question.questionNumber}`);
+        throw new Error(`Missing answer for question ${question.questionNumber}`);
+      }
+
+      if (!sectionScores[question.section]) {
+        sectionScores[question.section] = 0;
+        sectionMaxScores[question.section] = 0;
+      }
+
+      // For SJT, score is value; for Likert, score is value
+      if (question.questionType === 'SJT') {
+        sectionScores[question.section] += answer.answer; // value from options
+        sectionMaxScores[question.section] += question.maxScore;
+      } else {
+        sectionScores[question.section] += answer.answer; // value from options
+        sectionMaxScores[question.section] += question.maxScore;
+      }
+    });
+
+    // Debug: Log calculated section scores
+    console.log('[DEBUG] Calculated sectionScores:', sectionScores);
+    console.log('[DEBUG] Calculated sectionMaxScores:', sectionMaxScores);
+
+    // Calculate total scores
+    const totalScore = Object.values(sectionScores).reduce((a, b) => a + b, 0);
+    const maxTotalScore = Object.values(sectionMaxScores).reduce((a, b) => a + b, 0);
+    const percentage = (totalScore / maxTotalScore) * 100;
+
+    // Format section scores for storage
+    const formattedSectionScores = Object.keys(sectionScores).map(section => ({
+      section,
+      score: sectionScores[section],
+      maxScore: sectionMaxScores[section]
+    }));
+
+    // Save assessment result
+    const assessmentResult = new AssessmentResult({
+      userId,
+      assessmentType: 'adaptability',
+      answers,
+      sectionScores: formattedSectionScores,
+      totalScore,
+      maxTotalScore,
+      percentage,
+      completedAt: new Date(),
+      score: percentage
+    });
+
+    await assessmentResult.save();
+
+    // Update user's completed assessments and progress
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user has already completed this assessment
+    const existingAssessmentIndex = user.completedAssessments.findIndex(
+      a => a.assessmentType === 'adaptability'
+    );
+
+    if (existingAssessmentIndex !== -1) {
+      // Update existing assessment score
+      user.completedAssessments[existingAssessmentIndex] = {
+        assessmentType: 'adaptability',
+        completedAt: new Date(),
+        score: percentage
+      };
+    } else {
+      // Add new completion
+      user.completedAssessments.push({
+        assessmentType: 'adaptability',
+        completedAt: new Date(),
+        score: percentage
+      });
+      user.totalAssessmentsCompleted += 1;
+    }
+    
+    // Update progress
+    const totalAssessments = await Assessment.countDocuments();
+    user.progress = Math.min(100, (user.totalAssessmentsCompleted / totalAssessments) * 100);
+    
+    await user.save();
+
+    // Get updated assessment status for response
+    const availableAssessments = await Assessment.find();
+    const completedAssessmentTypes = user.completedAssessments.map(a => a.assessmentType);
+    const assessmentStatus = availableAssessments.map(assessment => ({
+      type: assessment.category,
+      title: assessment.title,
+      description: assessment.description,
+      completed: completedAssessmentTypes.includes(assessment.category),
+      score: user.completedAssessments.find(a => a.assessmentType === assessment.category)?.score || null
+    }));
+
+    res.json({
+      message: 'Assessment submitted successfully',
+      result: {
+        totalScore,
+        maxTotalScore,
+        percentage,
+        sectionScores: formattedSectionScores,
+        assessmentStatus
+      }
+    });
+  } catch (error) {
+    console.error('Error submitting adaptability assessment:', error);
+    res.status(500).json({ message: 'Error submitting assessment', error: error.message });
+  }
+});
+
+// Start Fast Questions Assessment (fetch all problem solving questions)
+router.post('/start/fast-questions', async (req, res) => {
+  try {
+    const questions = await ProblemSolvingQuestion.find({}).sort({ questionNumber: 1 });
+    res.json({ questions });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching fast questions', error: error.message });
+  }
+});
+
+// Submit Fast Questions Assessment
+router.post('/submit/fast-questions', authenticateToken, async (req, res) => {
+  try {
+    const { answers } = req.body;
+    const userId = req.userId;
+
+    // Fetch all questions to check answers
+    const questions = await ProblemSolvingQuestion.find({});
+    let score = 0;
+    answers.forEach(ans => {
+      const q = questions.find(q => q.questionNumber === ans.questionNumber);
+      if (q && q.correctAnswer === ans.answer) {
+        score += 1;
+      }
+    });
+
+    // Save result to AssessmentResult
+    const assessmentResult = new AssessmentResult({
+      userId,
+      assessmentType: 'fast-questions',
+      score,
+      completedAt: new Date(),
+      details: { totalQuestions: questions.length, answers }
+    });
+    await assessmentResult.save();
+
+    // Update user's completed assessments and progress
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const existingAssessmentIndex = user.completedAssessments.findIndex(
+      a => a.assessmentType === 'fast-questions'
+    );
+    if (existingAssessmentIndex !== -1) {
+      user.completedAssessments[existingAssessmentIndex] = {
+        assessmentType: 'fast-questions',
+        completedAt: new Date(),
+        score
+      };
+    } else {
+      user.completedAssessments.push({
+        assessmentType: 'fast-questions',
+        completedAt: new Date(),
+        score
+      });
+      user.totalAssessmentsCompleted += 1;
+    }
+    // Update progress
+    const totalAssessments = await Assessment.countDocuments();
+    user.progress = Math.min(100, (user.totalAssessmentsCompleted / totalAssessments) * 100);
+    await user.save();
+
+    // Get updated assessment status for response
+    const availableAssessments = await Assessment.find();
+    const completedAssessmentTypes = user.completedAssessments.map(a => a.assessmentType);
+    const assessmentStatus = availableAssessments.map(assessment => ({
+      type: assessment.category,
+      title: assessment.title,
+      description: assessment.description,
+      completed: completedAssessmentTypes.includes(assessment.category),
+      score: user.completedAssessments.find(a => a.assessmentType === assessment.category)?.score || null
+    }));
+
+    res.json({
+      message: 'Assessment submitted successfully',
+      score,
+      totalQuestions: questions.length,
+      assessmentStatus
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error submitting fast questions', error: error.message });
+  }
+});
+
+export default router;

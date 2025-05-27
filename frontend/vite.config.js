@@ -19,6 +19,9 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true,
       },
+      '/auth': 'http://localhost:5000',
     },
+    // Add history API fallback for client-side routing
+    historyApiFallback: true,
   },
 })

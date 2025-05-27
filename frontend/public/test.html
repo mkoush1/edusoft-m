@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Navigation</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #592538;
+    }
+    .button {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #592538;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Test Navigation Links</h1>
+  <p>Click the links below to test navigation:</p>
+  
+  <div>
+    <a href="/test-quiz/leadership" class="button">Test Quiz - Leadership</a>
+  </div>
+  
+  <div>
+    <a href="/assessment/quiz/leadership" class="button">Assessment Quiz - Leadership</a>
+  </div>
+  
+  <div>
+    <a href="/assessment/category/leadership" class="button">Assessment Details - Leadership</a>
+  </div>
+  
+  <div>
+    <a href="/" class="button">Home</a>
+  </div>
+  
+  <script>
+    // Add event listeners to log navigation attempts
+    document.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', (e) => {
+        console.log('Clicked link to:', link.getAttribute('href'));
+      });
+    });
+  </script>
+</body>
+</html>
