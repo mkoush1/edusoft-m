@@ -12,7 +12,7 @@ const ProblemSolvingAssessment = () => {
       title: "Fast Questions Assessment",
       description: "Test your quick problem-solving abilities with time-limited questions",
       category: "Problem Solving",
-      duration: 15,
+      duration: 50,
       image: "/eduSoft_logo.png"
     },
     {
@@ -25,7 +25,7 @@ const ProblemSolvingAssessment = () => {
     },
     {
       _id: "codeforces-link",
-      title: "Link Codeforces Account",
+      title: "Link LeetCode Account",
       description: "Connect your Codeforces account to track your competitive programming progress",
       category: "Problem Solving",
       duration: 5,

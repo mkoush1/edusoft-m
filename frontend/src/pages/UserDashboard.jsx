@@ -81,30 +81,17 @@ const UserDashboard = () => {
       );
       console.log("Status response:", statusResponse.data);
 
-      const status = statusResponse.data.data;
+      const status = statusResponse.data?.data || {};
 
-      // Update stats
+      // Update stats with safe property access and defaults
       const newStats = [...stats];
-      newStats[0].value = status.totalCompleted.toString(); // Completed Tests
-      newStats[1].value = status.totalAvailable.toString(); // Available Tests
-      newStats[2].value = `${Math.round(status.progress)}%`; // Progress
+      newStats[0].value = (status.totalCompleted || 0).toString(); // Completed Tests
+      newStats[1].value = (status.totalAvailable || 0).toString(); // Available Tests
+      newStats[2].value = `${Math.round(status.progress || 0)}%`; // Progress
       setStats(newStats);
 
-      // Save completed assessments
-      setCompletedAssessments(status.completedAssessments || []);
-
-      // Merge available and completed assessments for display
-      // Instead of showing completed first, keep the original order from the backend
-      const completedMap = Object.fromEntries(
-        (status.completedAssessments || []).map(a => [a.assessmentType, a])
-      );
-      const mergedAssessments = assessmentsResponse.data.map((assessment) => {
-        const completed = completedMap[assessment.category];
-        return completed
-          ? { ...assessment, ...completed, completed: true }
-          : { ...assessment, completed: false };
-      });
-      setAssessments(mergedAssessments);
+      // Show all assessments, not just available ones
+      setAssessments(assessmentsResponse.data);
 
       setLoading(false);
     } catch (error) {
@@ -150,11 +137,42 @@ const UserDashboard = () => {
 
   if (error) {
     return (
-      <DashboardLayout title="Dashboard Overview">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-red-500 text-xl">{error}</div>
+      <div className="flex flex-col h-screen bg-[#592538]">
+        <div className="flex items-center justify-center h-16 bg-[#4a1d2d]">
+          <h2 className="text-xl font-semibold text-white">Dashboard</h2>
         </div>
-      </DashboardLayout>
+        <nav className="flex flex-col space-y-1">
+          <SidebarItem icon="📊" text="Dashboard" active={location.pathname === "/dashboard"} onClick={() => navigate("/dashboard")} />
+          <SidebarItem icon="📝" text="Assessments" onClick={() => navigate("/assessments")} />
+          <SidebarItem icon="🎯" text="Progress" onClick={() => navigate("/progress")} />
+          <SidebarItem icon="📊" text="Reports" onClick={() => navigate("/reports")} />
+          <SidebarItem icon="📚" text="Recommendations" onClick={() => navigate("/recommendations")} />
+          <SidebarItem icon="⚙️" text="Settings" onClick={() => navigate("/settings")} />
+        </nav>
+
+        {/* Assessments Section */}
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <h2 className="text-2xl font-bold text-[#592538] mb-6">
+            Available Assessments
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {assessments.map((assessment) => (
+              <AssessmentCard key={assessment._id} assessment={assessment} />
+            ))}
+          </div>
+        </div>
+
+        {/* Test Page Link */}
+        <div className="mt-8 bg-white rounded-xl shadow-md p-6">
+          <h2 className="text-2xl font-bold text-[#592538] mb-6">Test Pages</h2>
+          <button
+            onClick={() => navigate("/presentation-fetch")}
+            className="px-6 py-3 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300"
+          >
+            Test Presentation Videos
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -181,6 +199,17 @@ const UserDashboard = () => {
             />
           ))}
         </div>
+      </div>
+
+      {/* Test Page Link */}
+      <div className="mt-8 bg-white rounded-xl shadow-md p-6">
+        <h2 className="text-2xl font-bold text-[#592538] mb-6">Test Pages</h2>
+        <button
+          onClick={() => navigate("/presentation-fetch")}
+          className="px-6 py-3 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300"
+        >
+          Test Presentation Videos
+        </button>
       </div>
     </DashboardLayout>
   );

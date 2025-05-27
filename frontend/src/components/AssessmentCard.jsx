@@ -22,15 +22,32 @@ const AssessmentCard = ({ assessment, onViewResults }) => {
     }
     // Puzzle Game card (go to puzzle instructions page)
     else if (assessment._id === "puzzle-game") {
-      navigate("/assessment/puzzle-game");
+      navigate("/assessment/puzzle-game/instructions");
     }
-    // Fast Questions card (add your route if exists)
+    // Fast Questions card (go to instructions page first)
     else if (assessment._id === "fast-questions") {
-      navigate("/assessment/fast-questions");
+      navigate("/assessment/instructions/fast-questions");
     }
     // Codeforces Link card (add your route if exists)
     else if (assessment._id === "codeforces-link") {
       navigate("/assessment/codeforces-link");
+    }
+    // Presentation skills
+    else if (normalizedCategory === "presentation") {
+      navigate("/presentation-assessment");
+    }
+    // Leadership
+    else if (normalizedCategory === "leadership") {
+      localStorage.setItem('currentQuizCategory', 'leadership');
+      navigate("/assessment/instructions/leadership");
+    }
+    // Adaptability & Flexibility card (go to instructions page first)
+    else if (
+      normalizedCategory === "adaptability and flexibility" ||
+      assessment._id === "adaptability" ||
+      assessment.title?.toLowerCase().includes("adaptability")
+    ) {
+      navigate("/assessment/instructions/adaptability");
     }
     // Default navigation
     else {
@@ -38,11 +55,28 @@ const AssessmentCard = ({ assessment, onViewResults }) => {
     }
   };
 
+  console.log('Assessment category:', assessment.category);
+  const imagePath = assessment.category === "Adaptability and Flexibility" ? "/Adaptability-and-Flexibility.jpg" :
+    assessment.category === "Communication" ? "/Communication.jpeg" :
+    assessment.category === "Leadership" ? "/Leadership.avif" :
+    assessment.category === "Presentation" ? "/presentation-skills.jpg" :
+    assessment.category === "Problem Solving" ? "/Problem-Solving.jpg" :
+    assessment.category === "Team Work and Collaboration" ? "/Team-Work-and-Collaboration.jpeg" :
+    "/eduSoft_logo.png";
+  console.log('Image path:', imagePath);
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition duration-300 flex flex-col h-full">
       <div className="h-48 bg-gray-100">
         <img
-          src={assessment.image || "/eduSoft_logo.png"}
+          src={
+            assessment.category === "Adaptability and Flexibility" ? "/Adaptability-and-Flexibility.jpg" :
+            assessment.category === "Communication" ? "/Communication.jpeg" :
+            assessment.category === "Leadership" ? "/Leadership.avif" :
+            assessment.category === "Presentation" ? "/presentation-skills.jpg" :
+            assessment.category === "Problem Solving" ? "/Problem-Solving.jpg" :
+            assessment.category === "Team Work and Collaboration" ? "/Team-Work-and-Collaboration.jpeg" :
+            "/eduSoft_logo.png"
+          } onError={(e) => console.error(`Image failed to load for ${assessment.category}:`, e.target.src)}
           alt={assessment.title}
           className="w-full h-full object-cover"
         />

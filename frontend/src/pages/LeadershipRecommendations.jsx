@@ -12,11 +12,74 @@ import {
 } from "recharts";
 import { getAssessmentResults } from "../services/api";
 
+const CourseCard = ({
+  title,
+  institution,
+  description,
+  duration,
+  link,
+  image,
+}) => (
+  <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+    <div className="h-40 overflow-hidden">
+      <img src={image} alt={title} className="w-full h-full object-cover" />
+    </div>
+    <div className="p-4">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-medium text-[#592538]/80">
+          {institution}
+        </span>
+        <span className="text-sm text-gray-500">{duration}</span>
+      </div>
+      <h3 className="text-lg font-bold text-[#592538] mb-2">{title}</h3>
+      <p className="text-gray-600 text-sm mb-4 line-clamp-2">{description}</p>
+      <a
+        href={link}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-block px-4 py-2 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300 text-sm"
+      >
+        Learn More
+      </a>
+    </div>
+  </div>
+);
+
 const LeadershipRecommendations = () => {
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+
+  const recommendedCourses = [
+    {
+      title: "Leadership Skills",
+      institution: "IIM Ahmedabad",
+      description:
+        "Gain comprehensive leadership skills with insights into mindfulness, inner stability, and positive strengths. Learn from top industry experts and develop essential management capabilities.",
+      duration: "46 hours",
+      link: "https://www.coursera.org/learn/leadershipskills",
+      image: "/Coursera.png",
+    },
+    {
+      title: "Leadership and Management",
+      institution: "Harvard Business School",
+      description:
+        "Develop your ability to lead with purpose and create value through a comprehensive exploration of leadership principles and organizational dynamics.",
+      duration: "6-8 weeks",
+      link: "https://online.hbs.edu/subjects/leadership-management/",
+      image: "/Harvard.png",
+    },
+    {
+      title: "Leadership vs Management",
+      institution: "Oxford Home Study",
+      description:
+        "Understand the key differences between leadership and management while developing practical skills for organizational success.",
+      duration: "20 hours",
+      link: "https://www.oxfordhomestudy.com/courses/leadership-courses-online/leadership-v-management-free",
+      image: "/oxford.png",
+    },
+  ];
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -157,6 +220,26 @@ const LeadershipRecommendations = () => {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* New Recommended Courses Section */}
+        <div className="mt-6">
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-[#592538] mb-2">
+                Recommended Leadership Courses
+              </h2>
+              <p className="text-gray-600">
+                Based on your assessment results, we recommend these courses to
+                strengthen your leadership skills:
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {recommendedCourses.map((course, index) => (
+                <CourseCard key={index} {...course} />
+              ))}
             </div>
           </div>
         </div>

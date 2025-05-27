@@ -25,11 +25,21 @@ import ProgressPage from "./pages/ProgressPage";
 import SettingsPage from "./pages/SettingsPage";
 import ProblemSolvingAssessment from "./pages/ProblemSolvingAssessment";
 import PuzzleGameAssessment from "./pages/PuzzleGameAssessment";
-import PuzzleInstructions from "./components/PuzzleInstructions";
-import AssessmentQuizAdaptability from "./pages/AssessmentQuiz_adaptability";
+import AdminDashboard from "./pages/AdminDashboard";
+import AssessmentManagement from "./pages/AssessmentManagement";
+import PresentationManagement from "./pages/PresentationManagement";
 import ConfirmEmail from "./pages/ConfirmEmail";
+import PresentationAssessment from "./pages/PresentationAssessment";
+import PresentationRecommendations from "./pages/PresentationRecommendations";
+import PresentationFetch from "./pages/PresentationFetch";
+import PresentationQuestions from "./pages/PresentationQuestions";
+import AssessmentInstructionsLeadership from "./pages/AssessmentInstructions_leadership";
 import AssessmentInstructionsFast from "./pages/AssessmentInstructions_fast";
 import AssessmentQuizFast from "./pages/AssessmentQuiz_fast";
+import PuzzleInstructions from "./components/PuzzleInstructions";
+import AssessmentInstructionsAdaptability from "./pages/AssessmentInstructions_adaptability";
+import AssessmentQuizAdaptability from "./pages/AssessmentQuiz_adaptability";
+import Recommendations from "./pages/Recommendations";
 
 const App = () => {
   return (
@@ -44,9 +54,15 @@ const App = () => {
         <Route path="/user-dashboard" element={<UserDashboard />} />
         <Route path="/supervisor-dashboard" element={<SupervisorDashboard />} />
         <Route path="/dashboard" element={<UserDashboard />} />
-        <Route path="/assessment/:id" element={<AssessmentDetails />} />
+        {/* Admin routes */}
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/assessments" element={<AssessmentManagement />} />
+        <Route path="/admin/presentation-management" element={<PresentationManagement />} />
+        
+        {/* Assessment specific routes */}
         <Route path="/assessment/problem-solving" element={<ProblemSolvingAssessment />} />
-        <Route path="/assessment/puzzle-game" element={<PuzzleInstructions />} />
+        <Route path="/assessment/puzzle-game" element={<PuzzleGameAssessment />} />
+        <Route path="/assessment/puzzle-game/instructions" element={<PuzzleInstructions />} />
         <Route path="/assessment/puzzle-game/start" element={<PuzzleGameAssessment />} />
         <Route
           path="/assessment/quiz/leadership"
@@ -62,13 +78,17 @@ const App = () => {
         <Route path="/assessments" element={<AssessmentsPage />} />
         <Route path="/progress" element={<ProgressPage />} />
         <Route path="/settings" element={<SettingsPage />} />
-        <Route
-          path="/assessment/quiz/adaptability"
-          element={<AssessmentQuizAdaptability />}
-        />
         <Route path="/confirm-email/:token" element={<ConfirmEmail />} />
-        <Route path="/assessment/fast-questions" element={<AssessmentInstructionsFast />} />
+        <Route path="/presentation-assessment" element={<PresentationAssessment />} />
+        <Route path="/presentation-recommendations" element={<PresentationRecommendations />} />
+        <Route path="/presentation-fetch" element={<PresentationFetch />} />
+        <Route path="/presentation-questions" element={<PresentationQuestions />} />
+        <Route path="/assessment/instructions/leadership" element={<AssessmentInstructionsLeadership />} />
+        <Route path="/assessment/instructions/fast-questions" element={<AssessmentInstructionsFast />} />
         <Route path="/assessment/quiz/fast-questions" element={<AssessmentQuizFast />} />
+        <Route path="/assessment/instructions/adaptability" element={<AssessmentInstructionsAdaptability />} />
+        <Route path="/assessment/quiz/adaptability" element={<AssessmentQuizAdaptability />} />
+        <Route path="/recommendations" element={<Recommendations />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

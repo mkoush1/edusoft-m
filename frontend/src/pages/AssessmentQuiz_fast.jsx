@@ -19,8 +19,7 @@ const AssessmentQuizFast = () => {
       try {
         const token = localStorage.getItem("token");
         if (!token) {
-          setError("Please log in to take the assessment");
-          setLoading(false);
+          navigate("/login");
           return;
         }
         const response = await axios.post(
@@ -49,7 +48,7 @@ const AssessmentQuizFast = () => {
       }
     };
     startAssessment();
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     if (timeLeft === null) return;

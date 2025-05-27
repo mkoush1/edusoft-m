@@ -38,3 +38,37 @@ export const authenticateToken = async (req, res, next) => {
     res.status(500).json({ message: 'Authentication error' });
   }
 }; 
+
+export const isAdmin = async (req, res, next) => {
+  try {
+    const user = req.user;
+    
+    if (!user) {
+      return res.status(401).json({ 
+        success: false,
+        message: 'User not authenticated' 
+      });
+    }
+    
+    // Check if user is an admin by email
+    const admin = await Admin.findOne({ email: user.email });
+    
+    if (!admin) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Access denied. Admin privileges required.' 
+      });
+    }
+    
+    // Attach admin info to request
+    req.admin = admin;
+    next();
+  } catch (error) {
+    console.error('Admin check error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error verifying admin status',
+      error: error.message 
+    });
+  }
+};

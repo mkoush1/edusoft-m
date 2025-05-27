@@ -1,8 +1,45 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const AssessmentInstructionsAdaptability = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleStartAssessment = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Please log in to start the assessment");
+        setLoading(false);
+        return;
+      }
+      const response = await axios.post(
+        "http://localhost:5000/api/assessments/start/adaptability",
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (response.data && response.data.questions) {
+        navigate("/assessment/quiz/adaptability", { state: { questions: response.data.questions } });
+      } else {
+        setError("Failed to start assessment. Please try again later.");
+      }
+    } catch (err) {
+      setError(
+        err.response?.data?.message || "Failed to start assessment. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#FDF8F8] flex items-center justify-center">
@@ -46,18 +83,23 @@ const AssessmentInstructionsAdaptability = () => {
           </div>
         </div>
         {/* Buttons */}
+        {error && (
+          <div className="mb-4 text-red-600 text-center">{error}</div>
+        )}
         <div className="flex justify-between gap-4 mt-8">
           <button
             onClick={() => navigate("/dashboard")}
             className="flex-1 px-4 py-2 bg-gray-100 text-[#592538] rounded-lg hover:bg-gray-200 transition duration-300"
+            disabled={loading}
           >
             Back to Dashboard
           </button>
           <button
-            onClick={() => navigate("/assessment/quiz/adaptability")}
+            onClick={handleStartAssessment}
             className="flex-1 px-4 py-2 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300"
+            disabled={loading}
           >
-            Start Assessment
+            {loading ? "Starting..." : "Start Assessment"}
           </button>
         </div>
       </div>

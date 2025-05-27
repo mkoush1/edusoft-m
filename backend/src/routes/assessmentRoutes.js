@@ -6,11 +6,116 @@ import AssessmentResult from '../models/AssessmentResult.js';
 import { authenticateToken } from '../middleware/auth.js';
 import User from '../models/user.js';
 import ProblemSolvingAssessment from '../models/ProblemSolvingAssessment.js';
-import Puzzle from '../models/Puzzle.js';
-import AdaptabilityAssessmentQuestion from '../models/AdaptabilityAssessmentQuestion.js';
 import ProblemSolvingQuestion from '../models/problemSolvingQuestionBank.js';
+import Puzzle from '../models/Puzzle.js';
+import PresentationQuestion from '../models/PresentationQuestion.js';
+import PresentationSubmission from '../models/PresentationSubmission.js';
+import AdaptabilityAssessmentQuestion from '../models/AdaptabilityAssessmentQuestion.js';
 
 const router = express.Router();
+
+// Initialize default presentation questions if none exist
+router.post('/presentation/init', async (req, res) => {
+  try {
+    const count = await PresentationQuestion.countDocuments();
+    if (count === 0) {
+      const defaultQuestions = [
+        {
+          questionNumber: 1,
+          question: "Please introduce yourself and tell us about your background.",
+          description: "Share your educational and professional background, highlighting key experiences and achievements.",
+          preparationTime: 120,
+          recordingTime: 120
+        },
+        {
+          questionNumber: 2,
+          question: "What leadership experience do you have and how has it shaped you?",
+          description: "Discuss specific leadership roles you've held and how they've influenced your leadership style.",
+          preparationTime: 120,
+          recordingTime: 120
+        },
+        {
+          questionNumber: 3,
+          question: "Describe a challenging situation you faced and how you overcame it.",
+          description: "Explain the situation, your role, the actions you took, and the outcome.",
+          preparationTime: 120,
+          recordingTime: 120
+        }
+      ];
+
+      await PresentationQuestion.insertMany(defaultQuestions);
+      res.json({ message: 'Default presentation questions initialized successfully' });
+    } else {
+      res.json({ message: 'Presentation questions already exist' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Error initializing presentation questions', error: error.message });
+  }
+});
+
+// Get all presentation questions
+router.get('/presentation/questions', async (req, res) => {
+  try {
+    const questions = await PresentationQuestion.find({}).sort({ questionNumber: 1 });
+    const questionMap = questions.reduce((acc, question) => {
+      acc[question.questionNumber] = {
+        question: question.question,
+        description: question.description,
+        preparationTime: question.preparationTime,
+        recordingTime: question.recordingTime
+      };
+      return acc;
+    }, {});
+    res.json(questionMap);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching presentation questions', error: error.message });
+  }
+});
+
+// Get presentation questions
+router.get('/presentation/questions', authenticateToken, async (req, res) => {
+  try {
+    const questions = await PresentationQuestion.find({})
+      .sort({ questionNumber: 1 })
+      .lean();
+
+    // Convert questions to object with questionNumber as key
+    const questionsObj = {};
+    questions.forEach(q => {
+      questionsObj[q.questionNumber] = {
+        question: q.question,
+        description: q.description,
+        preparationTime: q.preparationTime,
+        recordingTime: q.recordingTime
+      };
+    });
+
+    res.json(questionsObj);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching presentation questions', error: error.message });
+  }
+});
+
+// Get single presentation question
+router.get('/presentation/question/:questionNumber', authenticateToken, async (req, res) => {
+  try {
+    const { questionNumber } = req.params;
+    const question = await PresentationQuestion.findOne({ questionNumber: parseInt(questionNumber) });
+    
+    if (!question) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+
+    res.json({
+      question: question.question,
+      description: question.description,
+      preparationTime: question.preparationTime,
+      recordingTime: question.recordingTime
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching question', error: error.message });
+  }
+});
 
 // Helper function to generate a solvable puzzle
 const generatePuzzle = (size = 3) => {
@@ -19,7 +124,7 @@ const generatePuzzle = (size = 3) => {
     const numbers = Array.from({ length: size * size - 1 }, (_, i) => i + 1);
     const shuffled = numbers.sort(() => Math.random() - 0.5);
     const grid = [];
-    
+
     for (let i = 0; i < size; i++) {
       grid[i] = [];
       for (let j = 0; j < size; j++) {
@@ -27,7 +132,7 @@ const generatePuzzle = (size = 3) => {
         grid[i][j] = index < shuffled.length ? shuffled[index] : 0;
       }
     }
-    
+
     console.log('Generated puzzle grid:', grid);
     return grid;
   } catch (error) {
@@ -342,32 +447,18 @@ router.post('/submit/leadership', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if user has already completed this assessment
-    const existingAssessmentIndex = user.completedAssessments.findIndex(
-      a => a.assessmentType === 'leadership'
-    );
+    // Always add a new completion and increment the count
+    user.completedAssessments.push({
+      assessmentType: 'leadership',
+      completedAt: new Date(),
+      score: percentage
+    });
+    user.totalAssessmentsCompleted += 1;
 
-    if (existingAssessmentIndex !== -1) {
-      // Update existing assessment score
-      user.completedAssessments[existingAssessmentIndex] = {
-        assessmentType: 'leadership',
-        completedAt: new Date(),
-        score: percentage
-      };
-    } else {
-      // Add new completion
-      user.completedAssessments.push({
-        assessmentType: 'leadership',
-        completedAt: new Date(),
-        score: percentage
-      });
-      user.totalAssessmentsCompleted += 1;
-    }
-    
     // Update progress
     const totalAssessments = await Assessment.countDocuments();
     user.progress = Math.min(100, (user.totalAssessmentsCompleted / totalAssessments) * 100);
-    
+
     await user.save();
     console.log('User progress updated successfully');
 
@@ -442,11 +533,11 @@ router.get('/status/:userId', authenticateToken, async (req, res) => {
   try {
     const userId = req.params.userId;
     console.log('Getting assessment status for user:', userId);
-    
+
     // Get all available assessments
     const availableAssessments = await Assessment.find();
     console.log('Available assessments:', availableAssessments.length);
-    
+
     // Get user's completed assessments
     const user = await User.findById(userId);
     if (!user) {
@@ -458,10 +549,10 @@ router.get('/status/:userId', authenticateToken, async (req, res) => {
     }
     console.log('User found:', user._id);
     console.log('Completed assessments:', user.completedAssessments);
-    
+
     const completedAssessmentTypes = user.completedAssessments.map(a => a.assessmentType);
     console.log('Completed assessment types:', completedAssessmentTypes);
-    
+
     // Filter out completed assessments
     const remainingAssessments = availableAssessments.filter(
       assessment => !completedAssessmentTypes.includes(assessment.category)
@@ -520,8 +611,8 @@ router.post('/start/puzzle-game', authenticateToken, async (req, res) => {
       });
 
       if (puzzle) {
-        return res.json({ 
-          success: true, 
+        return res.json({
+          success: true,
           data: {
             assessment: existingAssessment,
             puzzle
@@ -563,7 +654,7 @@ router.post('/start/puzzle-game', authenticateToken, async (req, res) => {
     // Generate initial puzzle state
     const initialState = generatePuzzle(3);
     console.log('Generated initial puzzle state:', initialState);
-    
+
     // Start a new puzzle game
     const puzzle = new Puzzle({
       userId,
@@ -588,8 +679,8 @@ router.post('/start/puzzle-game', authenticateToken, async (req, res) => {
     });
     await assessment.save();
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: {
         assessment,
         puzzle
@@ -603,8 +694,8 @@ router.post('/start/puzzle-game', authenticateToken, async (req, res) => {
       message: error.message,
       code: error.code
     });
-    res.status(500).json({ 
-      message: 'Error starting assessment', 
+    res.status(500).json({
+      message: 'Error starting assessment',
       error: error.message,
       details: error.stack
     });
@@ -643,7 +734,7 @@ router.post('/submit/puzzle-game', authenticateToken, async (req, res) => {
 
     // Base score on completion rate (70%) and efficiency (30%)
     totalScore = Math.round(
-      (completionRate * 70) + 
+      (completionRate * 70) +
       ((1 - (averageMoves / 100)) * 15) + // Moves efficiency
       ((1 - (averageTime / 300)) * 15)    // Time efficiency
     );
@@ -705,7 +796,7 @@ router.post('/submit/puzzle-game', authenticateToken, async (req, res) => {
     // Update progress
     const totalAssessments = await Assessment.countDocuments();
     user.progress = Math.min(100, (user.totalAssessmentsCompleted / totalAssessments) * 100);
-    
+
     await user.save();
 
     // Update the assessment status to completed
@@ -744,9 +835,62 @@ router.post('/submit/puzzle-game', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error submitting puzzle game assessment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error submitting assessment',
+      error: error.message
+    });
+  }
+});
+
+// Import the presentation assessment controller
+import { submitPresentation } from '../controllers/presentationAssessment.controller.js';
+
+// Submit presentation assessment video
+router.post("/presentation/submit", authenticateToken, submitPresentation);
+
+// Check if user has completed presentation assessment
+router.get('/presentation/check-completion', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId;
+    console.log('Checking completion for user:', userId);
+
+    // Count the number of submissions for this user
+    const submissionCount = await PresentationSubmission.countDocuments({ userId });
+    console.log('Found submissions:', submissionCount);
+
+    res.json({
+      completed: submissionCount >= 3,
+      submissionCount
+    });
+  } catch (error) {
+    console.error('Error checking completion:', error);
     res.status(500).json({ 
       success: false,
-      message: 'Error submitting assessment', 
+      message: 'Error checking completion status', 
+      error: error.message 
+    });
+  }
+});
+
+// Get user's presentation submissions
+router.get('/presentation/submissions', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId;
+    console.log('Fetching submissions for user:', userId);
+
+    const submissions = await PresentationSubmission.find({ userId })
+      .sort({ submittedAt: -1 });
+
+    res.json({
+      success: true,
+      data: submissions
+    });
+  } catch (error) {
+    console.error('Error fetching submissions:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error fetching submissions', 
       error: error.message 
     });
   }
@@ -1008,4 +1152,4 @@ router.post('/submit/fast-questions', authenticateToken, async (req, res) => {
   }
 });
 
-export default router; 
+export default router;

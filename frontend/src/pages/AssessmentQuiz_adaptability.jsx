@@ -116,7 +116,6 @@ const AssessmentQuizAdaptability = () => {
           JSON.stringify(response.data.result.assessmentStatus)
         );
       }
-      await new Promise((resolve) => setTimeout(resolve, 1000));
       navigate("/dashboard");
     } catch (error) {
       console.error("[DEBUG] Error submitting assessment:", error);
