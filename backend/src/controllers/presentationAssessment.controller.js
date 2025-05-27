@@ -1,7 +1,7 @@
 import cloudinary from '../config/cloudinary.js';
 import PresentationSubmission from '../models/PresentationSubmission.js';
 import PresentationQuestion from '../models/PresentationQuestion.js';
-import User from '../models/User.js';
+import User from '../models/user.js';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 

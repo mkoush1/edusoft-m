@@ -3,7 +3,7 @@ import auth from '../middleware/auth.js';
 import Assessment from '../models/assessment.js';
 import AssessmentResult from '../models/assessmentResult.js';
 import TestQuestion from '../models/testQuestion.js';
-import User from '../models/User.js'; // Fixed case sensitivity issue
+import User from '../models/user.js';
 
 const router = express.Router();
 

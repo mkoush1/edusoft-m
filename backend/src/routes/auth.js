@@ -219,11 +219,26 @@ router.get('/user/confirm-email/:token', async (req, res) => {
     }
 
     if (!user.isEmailVerified) {
-      user.isEmailVerified = true;
-      user.emailVerificationToken = undefined;
-      user.emailVerificationExpires = undefined;
-      await user.save();
-      console.log('User email verified:', user.email);
+      try {
+        const result = await User.updateOne(
+          { _id: user._id },
+          {
+            $set: {
+              isEmailVerified: true,
+              emailVerificationToken: undefined,
+              emailVerificationExpires: undefined
+            }
+          }
+        );
+        console.log('User email verified and updated directly in DB:', user.email);
+        console.log('Update result:', result);
+        return res.status(200).json({ message: 'Email confirmed successfully! You can now log in.', user: { email: user.email }, updateResult: result });
+      } catch (updateErr) {
+        console.error('Error updating user after email verification:', updateErr);
+        return res.status(500).json({ message: 'Error updating user after verification', error: updateErr.message });
+      }
+    } else {
+      console.log('User already verified:', user.email);
     }
 
     return res.status(200).json({ message: 'Email confirmed successfully! You can now log in.', user: { email: user.email } });
@@ -426,6 +441,14 @@ router.post('/user/login', async (req, res) => {
       return res.status(401).json({ 
         message: 'Invalid credentials',
         details: 'Email or password is incorrect'
+      });
+    }
+
+    // Require email verification for students
+    if (!user.isEmailVerified) {
+      return res.status(401).json({ 
+        message: 'Please verify your email first',
+        email: user.email
       });
     }
 

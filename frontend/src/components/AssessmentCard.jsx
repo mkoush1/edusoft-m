@@ -41,6 +41,23 @@ const AssessmentCard = ({ assessment, onViewResults }) => {
       localStorage.setItem('currentQuizCategory', 'leadership');
       navigate("/assessment/instructions/leadership");
     }
+    // Presentation skills
+    else if (normalizedCategory === "presentation") {
+      navigate("/presentation-assessment");
+    }
+    // Leadership
+    else if (normalizedCategory === "leadership") {
+      localStorage.setItem('currentQuizCategory', 'leadership');
+      navigate("/assessment/instructions/leadership");
+    }
+    // Adaptability & Flexibility card (go to instructions page first)
+    else if (
+      normalizedCategory === "adaptability and flexibility" ||
+      assessment._id === "adaptability" ||
+      assessment.title?.toLowerCase().includes("adaptability")
+    ) {
+      navigate("/assessment/instructions/adaptability");
+    }
     // Default navigation
     else {
       navigate(`/assessment/${assessment._id}`);

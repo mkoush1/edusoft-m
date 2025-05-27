@@ -10,6 +10,7 @@ import ProblemSolvingQuestion from '../models/problemSolvingQuestionBank.js';
 import Puzzle from '../models/Puzzle.js';
 import PresentationQuestion from '../models/PresentationQuestion.js';
 import PresentationSubmission from '../models/PresentationSubmission.js';
+import AdaptabilityAssessmentQuestion from '../models/AdaptabilityAssessmentQuestion.js';
 
 const router = express.Router();
 
