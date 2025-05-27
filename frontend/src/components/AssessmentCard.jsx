@@ -22,15 +22,15 @@ const AssessmentCard = ({ assessment, onViewResults }) => {
     }
     // Puzzle Game card (go to puzzle instructions page)
     else if (assessment._id === "puzzle-game") {
-      navigate("/assessment/puzzle-game");
+      navigate("/assessment/puzzle-game/instructions");
     }
-    // Fast Questions card (add your route if exists)
+    // Fast Questions card (go to instructions page first)
     else if (assessment._id === "fast-questions") {
-      navigate("/assessment/fast-questions");
+      navigate("/assessment/instructions/fast-questions");
     }
-    // Codeforces Link card (add your route if exists)
-    else if (assessment._id === "codeforces-link") {
-      navigate("/assessment/codeforces-link");
+    // LeetCode Link card
+    else if (assessment._id === "leetcode-link") {
+      navigate("/assessment/leetcode");
     }
     // Presentation skills
     else if (normalizedCategory === "presentation") {
@@ -39,7 +39,7 @@ const AssessmentCard = ({ assessment, onViewResults }) => {
     // Leadership
     else if (normalizedCategory === "leadership") {
       localStorage.setItem('currentQuizCategory', 'leadership');
-      navigate("/leadership-quiz");
+      navigate("/assessment/instructions/leadership");
     }
     // Default navigation
     else {

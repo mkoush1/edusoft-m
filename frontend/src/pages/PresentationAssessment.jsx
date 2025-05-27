@@ -19,41 +19,45 @@ const PresentationAssessment = () => {
   const chunksRef = useRef([]);
   const streamRef = useRef(null); // Add ref to store the stream
 
-  useEffect(() => {
-    const fetchQuestions = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          throw new Error("No authentication token found");
-        }
-
-        const response = await axios.get(
-          "http://localhost:5000/api/assessments/presentation/questions",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        // Convert questions to array format
-        const questionArray = Object.entries(response.data).map(([id, question]) => ({
-          id: parseInt(id),
-          text: question.question,
-          description: question.description,
-          preparationTime: question.preparationTime,
-          recordingTime: question.recordingTime
-        }));
-
-        setQuestions(questionArray);
-      } catch (err) {
-        console.error("Error fetching questions:", err);
-        setError("Failed to load questions. Please try again.");
-      } finally {
-        setLoading(false);
+  // Move fetchQuestions to component scope so it can be called from anywhere
+  const fetchQuestions = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
       }
-    };
 
+      const response = await axios.get(
+        "http://localhost:5000/api/assessments/presentation/questions",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Convert questions to array format
+      const questionArray = Object.entries(response.data).map(([id, question]) => ({
+        id: parseInt(id),
+        text: question.question,
+        description: question.description,
+        preparationTime: question.preparationTime,
+        recordingTime: question.recordingTime
+      }));
+
+      setQuestions(questionArray);
+    } catch (err) {
+      if (err.response && err.response.status === 401) {
+        navigate('/login', { state: { message: 'Session expired. Please log in again.' } });
+      } else {
+        setError("Failed to load questions. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchQuestions();
   }, []);
 
@@ -80,8 +84,11 @@ const PresentationAssessment = () => {
           setStage("completed");
         }
       } catch (err) {
-        console.error("Error checking completion:", err);
-        setError("Failed to check assessment status. Please try again.");
+        if (err.response && err.response.status === 401) {
+          navigate('/login', { state: { message: 'Session expired. Please log in again.' } });
+        } else {
+          setError("Failed to check assessment status. Please try again.");
+        }
       }
     };
 

@@ -5,8 +5,10 @@ import dotenv from 'dotenv';
 import fileUpload from 'express-fileupload';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/user.js';
-import assessmentRoutes from './routes/assessments.js';
+import assessmentRoutes from './routes/assessmentRoutes.js';
 import puzzleRoutes from './routes/puzzleRoutes.js';
+import presentationAssessmentRoutes from './routes/presentationAssessment.routes.js';
+import leetcodeAssessmentRoutes from './routes/leetcodeAssessment.routes.js';
 
 // Load environment variables
 dotenv.config();
@@ -50,6 +52,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/assessments', assessmentRoutes);
 app.use('/api/puzzle', puzzleRoutes);
+app.use('/api/assessments/presentation', presentationAssessmentRoutes);
+app.use('/api/assessments/leetcode', leetcodeAssessmentRoutes);
 
 // Connect to MongoDB
 const connectDB = async () => {

@@ -90,14 +90,8 @@ const UserDashboard = () => {
       newStats[2].value = `${Math.round(status.progress || 0)}%`; // Progress
       setStats(newStats);
 
-      // Update assessments to show only available ones
-      const completedTypes = status.completedAssessments.map(
-        (a) => a.assessmentType
-      );
-      const availableAssessments = assessmentsResponse.data.filter(
-        (assessment) => !completedTypes.includes(assessment.category)
-      );
-      setAssessments(availableAssessments);
+      // Show all assessments, not just available ones
+      setAssessments(assessmentsResponse.data);
 
       setLoading(false);
     } catch (error) {

@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../services/api";
-import AdminLogin from "../components/AdminLogin";
 import {
   isValidEmail,
   isValidPassword,
   validationMessages,
 } from "../utils/validation";
+import AdminLogin from '../components/AdminLogin';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ const LoginPage = () => {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [isStudent, setIsStudent] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const validateForm = () => {
     const newErrors = {};
@@ -123,7 +123,6 @@ const LoginPage = () => {
               <br />
               excel.
             </p>
-
           </div>
           <Link to="/" className="block w-fit">
             <button className="mt-8 px-8 py-3 bg-white text-[#5B2333] rounded-full text-lg font-medium hover:bg-gray-100 transition-colors">
@@ -137,9 +136,12 @@ const LoginPage = () => {
       <div className="flex-1 flex items-center justify-center p-8 bg-gray-50">
         <div className="w-full max-w-md">
           <div className="bg-[#592538] rounded-2xl p-8 w-full">
-            <h1 className="text-[#F7F4F3] text-3xl font-bold mb-8">
+            <h1 className="text-[#F7F4F3] text-3xl font-bold mb-2">
               Welcome Back!
             </h1>
+            <p className="text-[#F7F4F3]/70 mb-8">
+              Choose one of the option to go
+            </p>
 
             {errors.submit && (
               <div className="mb-4 p-3 rounded bg-red-100/10">
@@ -147,7 +149,26 @@ const LoginPage = () => {
               </div>
             )}
 
-            {isStudent ? (
+            <div className="flex justify-center gap-4 mb-6">
+              <button
+                type="button"
+                className={`px-4 py-2 rounded-full font-medium transition-colors ${!isAdmin ? 'bg-white text-[#592538]' : 'bg-[#F7F4F3]/20 text-white'}`}
+                onClick={() => setIsAdmin(false)}
+              >
+                Student
+              </button>
+              <button
+                type="button"
+                className={`px-4 py-2 rounded-full font-medium transition-colors ${isAdmin ? 'bg-white text-[#592538]' : 'bg-[#F7F4F3]/20 text-white'}`}
+                onClick={() => setIsAdmin(true)}
+              >
+                Admin
+              </button>
+            </div>
+
+            {isAdmin ? (
+              <AdminLogin />
+            ) : (
               <form className="space-y-6" onSubmit={handleSubmit}>
                 <div>
                   <input
@@ -166,22 +187,25 @@ const LoginPage = () => {
                   )}
                 </div>
 
-              <div>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Password"
-                  className="w-full px-4 py-3 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-white/50"
-                />
-                {errors.password && (
-                  <p className="mt-1 text-sm text-red-200">{errors.password}</p>
-                )}
-              </div>
+                <div>
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Password"
+                    className="w-full px-4 py-3 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-white/50"
+                  />
+                  {errors.password && (
+                    <div className="flex items-center gap-2 mt-1 p-2 bg-red-50 border border-red-200 rounded">
+                      <svg className="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12A9 9 0 1 1 3 12a9 9 0 0 1 18 0Z" /></svg>
+                      <span className="text-sm text-red-700">{errors.password}</span>
+                    </div>
+                  )}
+                </div>
 
                 <div className="flex items-center justify-end">
                   <Link
@@ -192,15 +216,13 @@ const LoginPage = () => {
                   </Link>
                 </div>
 
-                {isStudent && (
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3 bg-white text-[#5B2333] rounded-lg font-medium hover:bg-gray-100 transition-colors"
-                  >
-                    {loading ? "Signing in..." : "Log in"}
-                  </button>
-                )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 bg-white text-[#5B2333] rounded-lg font-medium hover:bg-gray-100 transition-colors"
+                >
+                  {loading ? "Signing in..." : "Log in"}
+                </button>
 
                 <div className="text-center text-[#F7F4F3]">
                   <span className="opacity-70">Don't have account? </span>
@@ -211,24 +233,7 @@ const LoginPage = () => {
                     Sign up now
                   </Link>
                 </div>
-
-                <div className="mt-8">
-                  <button
-                    onClick={() => setIsStudent(true)}
-                    className="px-4 py-2 rounded-full text-sm font-medium bg-white text-[#5B2333] hover:bg-gray-100 transition-colors mr-4"
-                  >
-                    Student
-                  </button>
-                  <button
-                    onClick={() => setIsStudent(false)}
-                    className="px-4 py-2 rounded-full text-sm font-medium bg-white text-[#5B2333] hover:bg-gray-100 transition-colors"
-                  >
-                    Admin
-                  </button>
-                </div>
               </form>
-            ) : (
-              <AdminLogin />
             )}
           </div>
         </div>

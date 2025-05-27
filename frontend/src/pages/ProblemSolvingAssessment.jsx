@@ -12,7 +12,7 @@ const ProblemSolvingAssessment = () => {
       title: "Fast Questions Assessment",
       description: "Test your quick problem-solving abilities with time-limited questions",
       category: "Problem Solving",
-      duration: 15,
+      duration: 50,
       image: "/eduSoft_logo.png"
     },
     {
@@ -24,11 +24,11 @@ const ProblemSolvingAssessment = () => {
       image: "/eduSoft_logo.png"
     },
     {
-      _id: "codeforces-link",
+      _id: "leetcode-link",
       title: "Link LeetCode Account",
-      description: "Connect your Codeforces account to track your competitive programming progress",
+      description: "Connect your LeetCode account and solve coding problems to demonstrate your programming skills",
       category: "Problem Solving",
-      duration: 5,
+      duration: 30,
       image: "/eduSoft_logo.png"
     }
   ];

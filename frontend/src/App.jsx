@@ -16,7 +16,7 @@ import PrivateRoute from "./pages/PrivateRoute";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AssessmentDetails from "./pages/AssessmentDetails";
-import AssessmentQuiz_leadership from "./pages/AssessmentQuiz_leadership";
+import AssessmentQuiz from "./pages/AssessmentQuiz_leadership";
 import LeadershipRecommendations from "./pages/LeadershipRecommendations";
 import AboutUs from "./pages/AboutUs";
 import Features from "./pages/Features";
@@ -25,6 +25,19 @@ import ProgressPage from "./pages/ProgressPage";
 import SettingsPage from "./pages/SettingsPage";
 import ProblemSolvingAssessment from "./pages/ProblemSolvingAssessment";
 import PuzzleGameAssessment from "./pages/PuzzleGameAssessment";
+import AdminDashboard from "./pages/AdminDashboard";
+import AssessmentManagement from "./pages/AssessmentManagement";
+import PresentationManagement from "./pages/PresentationManagement";
+import ConfirmEmail from "./pages/ConfirmEmail";
+import PresentationAssessment from "./pages/PresentationAssessment";
+import PresentationRecommendations from "./pages/PresentationRecommendations";
+import PresentationFetch from "./pages/PresentationFetch";
+import PresentationQuestions from "./pages/PresentationQuestions";
+import AssessmentInstructionsLeadership from "./pages/AssessmentInstructions_leadership";
+import AssessmentInstructionsFast from "./pages/AssessmentInstructions_fast";
+import AssessmentQuizFast from "./pages/AssessmentQuiz_fast";
+import PuzzleInstructions from "./components/PuzzleInstructions";
+import LeetCodeAssessment from "./pages/LeetCodeAssessment";
 
 const App = () => {
   return (
@@ -47,6 +60,9 @@ const App = () => {
         {/* Assessment specific routes */}
         <Route path="/assessment/problem-solving" element={<ProblemSolvingAssessment />} />
         <Route path="/assessment/puzzle-game" element={<PuzzleGameAssessment />} />
+        <Route path="/assessment/puzzle-game/instructions" element={<PuzzleInstructions />} />
+        <Route path="/assessment/puzzle-game/start" element={<PuzzleGameAssessment />} />
+        <Route path="/assessment/leetcode" element={<LeetCodeAssessment />} />
         <Route
           path="/assessment/quiz/leadership"
           element={<AssessmentQuiz />}
@@ -61,6 +77,14 @@ const App = () => {
         <Route path="/assessments" element={<AssessmentsPage />} />
         <Route path="/progress" element={<ProgressPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/confirm-email/:token" element={<ConfirmEmail />} />
+        <Route path="/presentation-assessment" element={<PresentationAssessment />} />
+        <Route path="/presentation-recommendations" element={<PresentationRecommendations />} />
+        <Route path="/presentation-fetch" element={<PresentationFetch />} />
+        <Route path="/presentation-questions" element={<PresentationQuestions />} />
+        <Route path="/assessment/instructions/leadership" element={<AssessmentInstructionsLeadership />} />
+        <Route path="/assessment/instructions/fast-questions" element={<AssessmentInstructionsFast />} />
+        <Route path="/assessment/quiz/fast-questions" element={<AssessmentQuizFast />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

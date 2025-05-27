@@ -3,8 +3,9 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import User from '../models/user.js';
 import Supervisor from '../models/supervisor.model.js';
-import { sendPasswordResetEmail } from '../services/emailService.js';
+import { sendConfirmationEmail } from '../services/emailService.js';
 import bcrypt from 'bcryptjs';
+import Admin from '../models/Admin.js';
 
 const router = express.Router();
 

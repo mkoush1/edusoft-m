@@ -4,13 +4,14 @@ import TestQuestion from '../models/TestQuestion.js';
 import LeadershipQuestion from '../models/leadership_testBank.js';
 import AssessmentResult from '../models/AssessmentResult.js';
 import { authenticateToken } from '../middleware/auth.js';
-import User from '../models/user.js';
+import User from '../models/User.js';
 import ProblemSolvingAssessment from '../models/ProblemSolvingAssessment.js';
+import ProblemSolvingQuestion from '../models/problemSolvingQuestionBank.js';
 import Puzzle from '../models/Puzzle.js';
+import PresentationQuestion from '../models/PresentationQuestion.js';
+import PresentationSubmission from '../models/PresentationSubmission.js';
 
 const router = express.Router();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Initialize default presentation questions if none exist
 router.post('/presentation/init', async (req, res) => {
@@ -445,27 +446,13 @@ router.post('/submit/leadership', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if user has already completed this assessment
-    const existingAssessmentIndex = user.completedAssessments.findIndex(
-      a => a.assessmentType === 'leadership'
-    );
-
-    if (existingAssessmentIndex !== -1) {
-      // Update existing assessment score
-      user.completedAssessments[existingAssessmentIndex] = {
-        assessmentType: 'leadership',
-        completedAt: new Date(),
-        score: percentage
-      };
-    } else {
-      // Add new completion
-      user.completedAssessments.push({
-        assessmentType: 'leadership',
-        completedAt: new Date(),
-        score: percentage
-      });
-      user.totalAssessmentsCompleted += 1;
-    }
+    // Always add a new completion and increment the count
+    user.completedAssessments.push({
+      assessmentType: 'leadership',
+      completedAt: new Date(),
+      score: percentage
+    });
+    user.totalAssessmentsCompleted += 1;
 
     // Update progress
     const totalAssessments = await Assessment.countDocuments();
