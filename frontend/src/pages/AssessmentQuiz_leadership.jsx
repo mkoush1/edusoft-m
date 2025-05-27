@@ -5,6 +5,8 @@ import axios from "axios";
 import { submitAssessment } from "../services/api";
 
 const AssessmentQuiz = () => {
+  console.log('AssessmentQuiz component rendered');
+  
   const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,11 +15,20 @@ const AssessmentQuiz = () => {
   const [timeLeft, setTimeLeft] = useState(null);
   const [error, setError] = useState("");
 
+  const { category } = useParams();
+
   useEffect(() => {
     const startAssessment = async () => {
       try {
+        if (!category) {
+          setError("No assessment category specified");
+          setLoading(false);
+          return;
+        }
+
         const token = localStorage.getItem("token");
         console.log("Starting assessment with token:", token);
+        console.log("Assessment category:", category);
 
         if (!token) {
           setError("Please log in to take the assessment");
@@ -26,7 +37,7 @@ const AssessmentQuiz = () => {
         }
 
         const response = await axios.post(
-          "http://localhost:5000/api/assessments/start/leadership",
+          `http://localhost:5000/api/assessments/start/${category}`,
           {},
           {
             headers: {
@@ -59,7 +70,7 @@ const AssessmentQuiz = () => {
     };
 
     startAssessment();
-  }, []);
+  }, [category]);
 
   useEffect(() => {
     if (timeLeft === null) return;
@@ -120,7 +131,7 @@ const AssessmentQuiz = () => {
       console.log("Submitting answers:", formattedAnswers);
       
       const response = await axios.post(
-        "http://localhost:5000/api/assessments/submit/leadership",
+        `http://localhost:5000/api/assessments/submit/${category}`,
         {
           answers: formattedAnswers
         },

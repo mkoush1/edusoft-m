@@ -32,17 +32,43 @@ const AssessmentCard = ({ assessment, onViewResults }) => {
     else if (assessment._id === "codeforces-link") {
       navigate("/assessment/codeforces-link");
     }
+    // Presentation skills
+    else if (normalizedCategory === "presentation") {
+      navigate("/presentation-assessment");
+    }
+    // Leadership
+    else if (normalizedCategory === "leadership") {
+      localStorage.setItem('currentQuizCategory', 'leadership');
+      navigate("/leadership-quiz");
+    }
     // Default navigation
     else {
       navigate(`/assessment/${assessment._id}`);
     }
   };
 
+  console.log('Assessment category:', assessment.category);
+  const imagePath = assessment.category === "Adaptability and Flexibility" ? "/Adaptability-and-Flexibility.jpg" :
+    assessment.category === "Communication" ? "/Communication.jpeg" :
+    assessment.category === "Leadership" ? "/Leadership.avif" :
+    assessment.category === "Presentation" ? "/presentation-skills.jpg" :
+    assessment.category === "Problem Solving" ? "/Problem-Solving.jpg" :
+    assessment.category === "Team Work and Collaboration" ? "/Team-Work-and-Collaboration.jpeg" :
+    "/eduSoft_logo.png";
+  console.log('Image path:', imagePath);
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition duration-300 flex flex-col h-full">
       <div className="h-48 bg-gray-100">
         <img
-          src={assessment.image || "/eduSoft_logo.png"}
+          src={
+            assessment.category === "Adaptability and Flexibility" ? "/Adaptability-and-Flexibility.jpg" :
+            assessment.category === "Communication" ? "/Communication.jpeg" :
+            assessment.category === "Leadership" ? "/Leadership.avif" :
+            assessment.category === "Presentation" ? "/presentation-skills.jpg" :
+            assessment.category === "Problem Solving" ? "/Problem-Solving.jpg" :
+            assessment.category === "Team Work and Collaboration" ? "/Team-Work-and-Collaboration.jpeg" :
+            "/eduSoft_logo.png"
+          } onError={(e) => console.error(`Image failed to load for ${assessment.category}:`, e.target.src)}
           alt={assessment.title}
           className="w-full h-full object-cover"
         />

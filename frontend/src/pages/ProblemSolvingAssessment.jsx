@@ -25,7 +25,7 @@ const ProblemSolvingAssessment = () => {
     },
     {
       _id: "codeforces-link",
-      title: "Link Codeforces Account",
+      title: "Link LeetCode Account",
       description: "Connect your Codeforces account to track your competitive programming progress",
       category: "Problem Solving",
       duration: 5,

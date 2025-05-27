@@ -389,7 +389,7 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
 
         {(puzzle?.isCompleted || isTimeUp) && (
           <div className="mt-6 text-center">
-            <p className={`text-xl font-bold mb-4 ${isTimeUp ? 'text-red-600' : 'text-green-600'}`}>
+            <p className={`text-xl font-bold mb-4 ${isTimeUp ? 'text-red-600' : 'text-green-600'}`}> 
               {isTimeUp ? "Time's Up!" : "Congratulations! You solved the puzzle!"}
             </p>
             <p className="text-gray-600 mb-4">
