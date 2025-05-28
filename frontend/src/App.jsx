@@ -37,7 +37,6 @@ import AssessmentInstructionsLeadership from "./pages/AssessmentInstructions_lea
 import AssessmentInstructionsFast from "./pages/AssessmentInstructions_fast";
 import AssessmentQuizFast from "./pages/AssessmentQuiz_fast";
 import PuzzleInstructions from "./components/PuzzleInstructions";
-import LeetCodeAssessment from "./pages/LeetCodeAssessment";
 import AssessmentInstructionsAdaptability from "./pages/AssessmentInstructions_adaptability";
 import AssessmentQuizAdaptability from "./pages/AssessmentQuiz_adaptability";
 import Recommendations from "./pages/Recommendations";
@@ -65,7 +64,6 @@ const App = () => {
         <Route path="/assessment/puzzle-game" element={<PuzzleGameAssessment />} />
         <Route path="/assessment/puzzle-game/instructions" element={<PuzzleInstructions />} />
         <Route path="/assessment/puzzle-game/start" element={<PuzzleGameAssessment />} />
-        <Route path="/assessment/leetcode" element={<LeetCodeAssessment />} />
         <Route
           path="/assessment/quiz/leadership"
           element={<AssessmentQuiz />}
