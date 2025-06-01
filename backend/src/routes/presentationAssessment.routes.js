@@ -1,28 +1,149 @@
 import express from 'express';
-import { submitPresentation, getQuestions, checkCompletion, getVideos, deleteVideo, evaluateVideo, getUserSubmissions } from '../controllers/presentationAssessment.controller.js';
-import { authenticateToken as auth } from '../middleware/auth.js';
+import { submitPresentation, getQuestions, checkCompletion, getVideos, deleteVideo, evaluateVideo, getUserSubmissions, getPresentationRecommendations, evaluateSubmission } from '../controllers/presentationAssessment.controller.js';
+import { authenticateToken } from '../middleware/auth.js';
+import fileUpload from 'express-fileupload';
+import PresentationSubmission from '../models/PresentationSubmission.js';
 
 const router = express.Router();
 
+// Middleware for file uploads
+router.use(fileUpload({
+    useTempFiles: true,
+    tempFileDir: './tmp/', // Using relative path
+    createParentPath: true,
+    abortOnLimit: true,
+    limits: { 
+        fileSize: 500 * 1024 * 1024, // 500MB limit
+        files: 2 // Allow up to 2 files (video + presentation)
+    },
+    limitHandler: (req, res, next) => {
+        res.status(413).json({
+            success: false,
+            message: 'File size too large. Maximum size is 500MB per file.'
+        });
+    }
+}));
+
 // Get presentation questions
-router.get('/questions', auth, getQuestions);
+router.get('/questions', authenticateToken, getQuestions);
 
 // Check if user has completed the presentation assessment
-router.get('/check-completion', auth, checkCompletion);
+router.get('/check-completion', authenticateToken, checkCompletion);
 
 // Get all presentation videos
-router.get('/videos', auth, getVideos);
+router.get('/videos', authenticateToken, getVideos);
 
 // Delete a presentation video
-router.delete('/videos/:id', auth, deleteVideo);
+router.delete('/videos/:id', authenticateToken, deleteVideo);
 
 // Evaluate a presentation video
-router.post('/evaluate/:id', auth, evaluateVideo);
+router.post('/evaluate/:id', authenticateToken, evaluateVideo);
 
 // Get user's presentation submissions with evaluations
-router.get('/user-submissions', auth, getUserSubmissions);
+router.get('/user-submissions', authenticateToken, getUserSubmissions);
 
-// Submit a presentation recording
-router.post('/submit', submitPresentation);
+// Submit a presentation recording (using fixed version with improved error handling and cleanup)
+router.post('/submit', authenticateToken, submitPresentation);
+
+// Get presentation recommendations
+router.get('/recommendations', authenticateToken, getPresentationRecommendations);
+
+// Evaluate presentation submission with detailed criteria
+router.put('/evaluate-submission/:id', authenticateToken, evaluateSubmission);
+
+// Get presentation file by ID (redirects to Google Drive)
+router.get('/file/:fileId', authenticateToken, async (req, res) => {
+    try {
+        const { fileId } = req.params;
+        
+        // Find the submission with this file ID
+        const submission = await PresentationSubmission.findOne({
+            'presentationFile.fileId': fileId
+        });
+        
+        if (!submission || !submission.presentationFile) {
+            return res.status(404).json({
+                success: false,
+                message: 'File not found or access denied'
+            });
+        }
+        
+        // Redirect to the Google Drive download link
+        res.redirect(submission.presentationFile.downloadLink);
+    } catch (error) {
+        console.error('Error getting file:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error retrieving file',
+            error: error.message,
+            ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+        });
+    }
+});
+
+// Check for active assessment
+router.get('/active', authenticateToken, (req, res) => {
+    // This is a placeholder for now - we'll implement this in the controller
+    // For now, just return a mock active assessment
+    const now = new Date();
+    const deadline = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
+    
+    res.status(200).json({
+        success: true,
+        activeAssessment: {
+            _id: 'mock-assessment-id',
+            startTime: now,
+            deadline: deadline
+        }
+    });
+});
+
+// Start a new assessment
+router.post('/start', authenticateToken, (req, res) => {
+    // This is a placeholder for now - we'll implement this in the controller
+    const now = new Date();
+    const deadline = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
+    
+    res.status(200).json({
+        success: true,
+        assessment: {
+            _id: 'mock-assessment-id',
+            startTime: now,
+            deadline: deadline
+        }
+    });
+});
+
+// Upload presentation file
+router.post('/upload-presentation', authenticateToken, (req, res) => {
+    try {
+        if (!req.files || !req.files.presentation) {
+            return res.status(400).json({
+                success: false,
+                message: 'No presentation file uploaded'
+            });
+        }
+
+        const { videoSubmissionId } = req.body;
+        
+        // In a real implementation, we would upload this to Cloudinary or another storage service
+        // For now, just acknowledge receipt
+        
+        res.status(200).json({
+            success: true,
+            message: 'Presentation file uploaded successfully',
+            data: {
+                presentationUrl: 'https://example.com/mock-presentation-url'
+            }
+        });
+    } catch (error) {
+        console.error('Error uploading presentation file:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error uploading presentation file',
+            error: error.message
+        });
+    }
+});
 
 export default router; 

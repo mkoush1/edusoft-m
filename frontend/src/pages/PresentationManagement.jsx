@@ -13,10 +13,57 @@ const PresentationManagement = () => {
   const [submitting, setSubmitting] = useState(false);
   const [criteriaScores, setCriteriaScores] = useState({
     contentClarity: 0,
-    engagement: 0,
-    impact: 0
+    engagementDelivery: 0,
+    impactEffectiveness: 0
   });
   const navigate = useNavigate();
+
+  // Helper function to format dates
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Date not available';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid date';
+      
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Date error';
+    }
+  };
+
+  // Helper function to get display name
+  const getDisplayName = (video) => {
+    try {
+      // If we have a valid username, use it
+      if (video.username && video.username !== 'Unknown User') {
+        return video.username;
+      }
+      
+      // If we have a userId, show a generic user with ID
+      if (video.userId) {
+        const userIdStr = typeof video.userId === 'object' ? 
+          (video.userId._id || JSON.stringify(video.userId)) : 
+          video.userId.toString();
+          
+        // Clean up the ID string and take first 6 characters
+        const cleanId = userIdStr.replace(/[^\w]/g, '').substring(0, 6);
+        return `User ${cleanId}`;
+      }
+      
+      return 'Unknown User';
+      
+    } catch (error) {
+      console.error('Error getting display name:', error, 'Video data:', video);
+      return 'Unknown User';
+    }
+  };
 
   useEffect(() => {
     fetchVideos();
@@ -39,7 +86,11 @@ const PresentationManagement = () => {
         }
       );
 
-      setVideos(response.data);
+      if (response.data.success) {
+        setVideos(response.data.videos);
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch videos');
+      }
       setLoading(false);
     } catch (err) {
       console.error('Error fetching videos:', err);
@@ -57,22 +108,22 @@ const PresentationManagement = () => {
     if (video.criteriaScores) {
       setCriteriaScores({
         contentClarity: video.criteriaScores.contentClarity || 0,
-        engagement: video.criteriaScores.engagement || 0,
-        impact: video.criteriaScores.impact || 0
+        engagementDelivery: video.criteriaScores.engagementDelivery || 0,
+        impactEffectiveness: video.criteriaScores.impactEffectiveness || 0
       });
     } else {
       // Reset criteria scores if not available
       setCriteriaScores({
         contentClarity: 0,
-        engagement: 0,
-        impact: 0
+        engagementDelivery: 0,
+        impactEffectiveness: 0
       });
     }
   };
 
   const calculateTotalScore = () => {
     // Calculate the average of the three criteria scores, rounded to nearest integer
-    const total = (criteriaScores.contentClarity + criteriaScores.engagement + criteriaScores.impact) / 3;
+    const total = (criteriaScores.contentClarity + criteriaScores.engagementDelivery + criteriaScores.impactEffectiveness) / 3;
     return Math.round(total * 10) / 10; // Round to 1 decimal place
   };
 
@@ -109,8 +160,8 @@ const PresentationManagement = () => {
           feedback,
           criteriaScores: {
             contentClarity: criteriaScores.contentClarity,
-            engagement: criteriaScores.engagement,
-            impact: criteriaScores.impact
+            engagementDelivery: criteriaScores.engagementDelivery,
+            impactEffectiveness: criteriaScores.impactEffectiveness
           }
         },
         {
@@ -128,8 +179,8 @@ const PresentationManagement = () => {
       setScore(0);
       setCriteriaScores({
         contentClarity: 0,
-        engagement: 0,
-        impact: 0
+        engagementDelivery: 0,
+        impactEffectiveness: 0
       });
     } catch (err) {
       console.error('Error submitting evaluation:', err);
@@ -164,250 +215,300 @@ const PresentationManagement = () => {
 
   return (
     <DashboardLayout title="Presentation Assessment Management">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Video List */}
-        <div className="lg:col-span-1 bg-white rounded-2xl shadow-lg p-6 h-fit">
-          <h2 className="text-xl font-bold text-[#592538] mb-4">Submissions</h2>
-          
-          {videos.length === 0 ? (
-            <p className="text-gray-600">No videos found.</p>
-          ) : (
-            <div className="space-y-4 max-h-[600px] overflow-y-auto">
-              {videos.map((video) => (
-                <div 
-                  key={video._id} 
-                  className={`border rounded-lg p-4 cursor-pointer transition-colors ${selectedVideo && selectedVideo._id === video._id ? 'border-[#592538] bg-[#FDF8F8]' : 'hover:border-gray-400'}`}
-                  onClick={() => handleSelectVideo(video)}
-                >
-                  <div className="flex justify-between items-start">
-                    <h3 className="text-lg font-semibold text-[#592538]">
-                      Question {video.questionId}
+      {/* Videos List */}
+      <div className="mb-8">
+        <h2 className="text-xl font-bold text-[#592538] mb-4">Student Submissions</h2>
+        
+        {videos.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+            <p className="text-gray-600">No submissions found.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {videos.map((video) => (
+              <div 
+                key={video._id} 
+                className={`bg-white rounded-lg border p-4 cursor-pointer transition-colors ${selectedVideo && selectedVideo._id === video._id ? 'border-[#592538] bg-[#FDF8F8]' : 'hover:border-gray-400'}`}
+                onClick={() => handleSelectVideo(video)}
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-lg font-semibold text-[#592538] mb-1">
+                      {getDisplayName(video)}
                     </h3>
-                    <span className={`px-2 py-1 text-xs rounded-full ${video.score ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                      {video.score ? 'Evaluated' : 'Pending'}
-                    </span>
+                    <h4 className="text-md text-gray-700">
+                      Question {video.questionId || 'General'}
+                    </h4>
                   </div>
-                  <p className="text-gray-600 text-sm mt-1">
-                    Submitted by: {video.username || 'Unknown User'}
-                  </p>
-                  <p className="text-gray-600 text-sm">
-                    Submitted: {new Date(video.submittedAt).toLocaleString()}
-                  </p>
-                  {video.score && (
-                    <p className="text-gray-600 text-sm font-medium mt-2">
-                      Score: {video.score}/100
-                    </p>
-                  )}
+                  <span className={`px-2 py-1 text-xs rounded-full ${video.score !== null ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                    {video.score !== null ? `Score: ${video.score}/10` : 'Waiting for admin evaluation'}
+                  </span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <div className="mt-2">
+                  <p className="text-sm text-gray-600">
+                    Submitted: {formatDate(video.submittedAt || video.createdAt)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-        {/* Video Player and Evaluation Form */}
-        <div className="lg:col-span-2">
-          {selectedVideo ? (
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h2 className="text-xl font-bold text-[#592538] mb-4">
-                Evaluate Presentation - Question {selectedVideo.questionId}
-              </h2>
-              
-              <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden mb-6">
-                <video
-                  controls
-                  className="w-full h-full"
-                  src={selectedVideo.videoPath}
-                  autoPlay
-                >
-                  Your browser does not support the video tag.
-                </video>
+      {/* Video Details and Evaluation */}
+      <div className="mt-8">
+        {selectedVideo ? (
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <h2 className="text-xl font-bold text-[#592538] mb-4">
+              Evaluate Presentation - Question {selectedVideo.questionId || 'General'}
+            </h2>
+            
+            <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden mb-6">
+              <video
+                controls
+                className="w-full h-full"
+                src={selectedVideo.videoUrl}
+                poster={selectedVideo.thumbnailUrl}
+                autoPlay
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            
+            {selectedVideo.presentationFile && (
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 className="text-md font-semibold text-[#592538] mb-2">Presentation File</h3>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">{selectedVideo.presentationFile.name}</span>
+                  <div className="space-x-2">
+                    <a 
+                      href={selectedVideo.presentationFile.webViewLink} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                    >
+                      View
+                    </a>
+                    <a 
+                      href={selectedVideo.presentationFile.downloadLink} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
+                    >
+                      Download
+                    </a>
+                  </div>
+                </div>
               </div>
-              
-              <div className="space-y-6">
-                {/* Evaluation Criteria based on question number */}
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <h3 className="text-lg font-semibold text-[#592538] mb-3">Evaluation Criteria</h3>
-                  
-                  {selectedVideo && (
-                    <div className="mb-4">
-                      <p className="text-sm text-gray-500 mb-2">Question {selectedVideo.questionId}:</p>
-                      <p className="font-medium">
-                        {selectedVideo.questionId === 1 && "Explain a Simple Idea from Your Field"}
-                        {selectedVideo.questionId === 2 && "Share an Important Update with Your Team"}
-                        {selectedVideo.questionId === 3 && "Describe a Challenging Situation You Faced and How You Overcame It"}
-                      </p>
+            )}
+            
+            <div className="space-y-6 mt-6">
+              {/* Evaluation Criteria based on question number */}
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <h3 className="text-lg font-semibold text-[#592538] mb-3">Evaluation Criteria</h3>
+                
+                {selectedVideo && (
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-500 mb-2">Question {selectedVideo.questionId || 'General'}:</p>
+                    <p className="font-medium">
+                      {selectedVideo.questionId === 1 && "Explain a Simple Idea from Your Field"}
+                      {selectedVideo.questionId === 2 && "Share an Important Update with Your Team"}
+                      {selectedVideo.questionId === 3 && "Describe a Challenge You Solved"}
+                      {(!selectedVideo.questionId || ![1, 2, 3].includes(selectedVideo.questionId)) && "General Presentation Assessment"}
+                    </p>
+                  </div>
+                )}
+                
+                <div className="space-y-4">
+                  {/* Content Clarity and Structure */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label htmlFor="contentClarity" className="block text-sm font-medium text-gray-700">
+                        Content Clarity and Structure: {criteriaScores.contentClarity}/10
+                      </label>
                     </div>
-                  )}
-                  
-                  <div className="space-y-4">
-                    {/* Content Clarity and Structure */}
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <label htmlFor="contentClarity" className="block text-sm font-medium text-gray-700">
-                          Content Clarity and Structure (0-10)
-                        </label>
-                        <span className="text-sm font-semibold text-[#592538]">{criteriaScores.contentClarity}</span>
-                      </div>
-                      <input
-                        type="range"
-                        id="contentClarity"
-                        min="0"
-                        max="10"
-                        step="0.5"
-                        value={criteriaScores.contentClarity}
-                        onChange={(e) => handleCriteriaScoreChange('contentClarity', e.target.value)}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#592538]"
-                      />
-                      <div className="mt-2 text-xs text-gray-600 bg-white p-2 rounded border">
-                        {selectedVideo && selectedVideo.questionId === 1 && (
-                          <ul className="list-disc list-inside space-y-1">
-                            <li>Explains idea clearly with simple, precise language</li>
-                            <li>Follows logical structure with clear transitions</li>
-                            <li>Content is accurate and relevant to the field</li>
-                          </ul>
-                        )}
-                        {selectedVideo && selectedVideo.questionId === 2 && (
-                          <ul className="list-disc list-inside space-y-1">
-                            <li>Communicates update clearly with key details</li>
-                            <li>Organized logically with clear beginning, middle, and end</li>
-                            <li>Content is relevant, concise, and tailored to team needs</li>
-                          </ul>
-                        )}
-                        {selectedVideo && selectedVideo.questionId === 3 && (
-                          <ul className="list-disc list-inside space-y-1">
-                            <li>Describes situation and resolution clearly with sufficient context</li>
-                            <li>Follows logical narrative with smooth transitions</li>
-                            <li>Content focuses on specific challenge and clear explanation of steps</li>
-                          </ul>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Engagement and Connection */}
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <label htmlFor="engagement" className="block text-sm font-medium text-gray-700">
-                          Engagement and Connection (0-10)
-                        </label>
-                        <span className="text-sm font-semibold text-[#592538]">{criteriaScores.engagement}</span>
-                      </div>
-                      <input
-                        type="range"
-                        id="engagement"
-                        min="0"
-                        max="10"
-                        step="0.5"
-                        value={criteriaScores.engagement}
-                        onChange={(e) => handleCriteriaScoreChange('engagement', e.target.value)}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#592538]"
-                      />
-                      <div className="mt-2 text-xs text-gray-600 bg-white p-2 rounded border">
-                        {selectedVideo && selectedVideo.questionId === 1 && (
-                          <ul className="list-disc list-inside space-y-1">
-                            <li>Uses vocal variety, appropriate pacing, and expressive delivery</li>
-                            <li>Incorporates engaging techniques (examples, analogies)</li>
-                            <li>Delivery feels natural and confident</li>
-                          </ul>
-                        )}
-                        {selectedVideo && selectedVideo.questionId === 2 && (
-                          <ul className="list-disc list-inside space-y-1">
-                            <li>Uses confident and engaging tone with appropriate body language</li>
-                            <li>Employs techniques like addressing team concerns and inclusive language</li>
-                            <li>Delivery is natural and professional</li>
-                          </ul>
-                        )}
-                        {selectedVideo && selectedVideo.questionId === 3 && (
-                          <ul className="list-disc list-inside space-y-1">
-                            <li>Uses storytelling techniques and emotional emphasis</li>
-                            <li>Delivery is confident and authentic</li>
-                            <li>Maintains audience interest by highlighting stakes and significance</li>
-                          </ul>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Impact and Persuasiveness */}
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <label htmlFor="impact" className="block text-sm font-medium text-gray-700">
-                          Impact and Persuasiveness (0-10)
-                        </label>
-                        <span className="text-sm font-semibold text-[#592538]">{criteriaScores.impact}</span>
-                      </div>
-                      <input
-                        type="range"
-                        id="impact"
-                        min="0"
-                        max="10"
-                        step="0.5"
-                        value={criteriaScores.impact}
-                        onChange={(e) => handleCriteriaScoreChange('impact', e.target.value)}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#592538]"
-                      />
-                      <div className="mt-2 text-xs text-gray-600 bg-white p-2 rounded border">
-                        {selectedVideo && selectedVideo.questionId === 1 && (
-                          <ul className="list-disc list-inside space-y-1">
-                            <li>Conveys significance of the idea convincingly</li>
-                            <li>Explanation leaves clear and memorable impression</li>
-                            <li>Demonstrates confidence and professionalism</li>
-                          </ul>
-                        )}
-                        {selectedVideo && selectedVideo.questionId === 2 && (
-                          <ul className="list-disc list-inside space-y-1">
-                            <li>Clearly articulates update's importance to the team</li>
-                            <li>Motivates team to act or align with the update</li>
-                            <li>Confident demeanor reinforces update's credibility</li>
-                          </ul>
-                        )}
-                        {selectedVideo && selectedVideo.questionId === 3 && (
-                          <ul className="list-disc list-inside space-y-1">
-                            <li>Conveys significance of challenge and effectiveness of solution</li>
-                            <li>Demonstrates problem-solving skills and resilience</li>
-                            <li>Confident delivery reinforces credibility of approach</li>
-                          </ul>
-                        )}
-                      </div>
+                    <input
+                      type="range"
+                      id="contentClarity"
+                      min="0"
+                      max="10"
+                      step="0.5"
+                      value={criteriaScores.contentClarity}
+                      onChange={(e) => handleCriteriaScoreChange('contentClarity', e.target.value)}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#592538]"
+                    />
+                    <div className="mt-2 text-xs text-gray-600 bg-white p-2 rounded border">
+                      {selectedVideo && selectedVideo.questionId === 1 && (
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Clearly explains complex concept in simple terms</li>
+                          <li>Well-structured with logical flow</li>
+                          <li>Uses appropriate examples or analogies</li>
+                        </ul>
+                      )}
+                      {selectedVideo && selectedVideo.questionId === 2 && (
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Update is clearly articulated and structured</li>
+                          <li>Key points are emphasized and easy to understand</li>
+                          <li>Logical flow from context to details to next steps</li>
+                        </ul>
+                      )}
+                      {selectedVideo && selectedVideo.questionId === 3 && (
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Challenge and solution clearly explained</li>
+                          <li>Structured narrative with context, problem, approach, and outcome</li>
+                          <li>Technical details balanced with accessible explanation</li>
+                        </ul>
+                      )}
+                      {selectedVideo && (!selectedVideo.questionId || ![1, 2, 3].includes(selectedVideo.questionId)) && (
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Content is well-structured and flows logically</li>
+                          <li>Main points are clearly articulated</li>
+                          <li>Appropriate level of detail for the audience</li>
+                        </ul>
+                      )}
                     </div>
                   </div>
                   
-                  <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-700">Overall Score:</span>
+                  {/* Engagement and Delivery */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label htmlFor="engagementDelivery" className="block text-sm font-medium text-gray-700">
+                        Engagement and Delivery: {criteriaScores.engagementDelivery}/10
+                      </label>
+                    </div>
+                    <input
+                      type="range"
+                      id="engagementDelivery"
+                      min="0"
+                      max="10"
+                      step="0.5"
+                      value={criteriaScores.engagementDelivery}
+                      onChange={(e) => handleCriteriaScoreChange('engagementDelivery', e.target.value)}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#592538]"
+                    />
+                    <div className="mt-2 text-xs text-gray-600 bg-white p-2 rounded border">
+                      {selectedVideo && selectedVideo.questionId === 1 && (
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Maintains audience interest through vocal variety</li>
+                          <li>Uses appropriate gestures and body language</li>
+                          <li>Demonstrates enthusiasm for the subject</li>
+                        </ul>
+                      )}
+                      {selectedVideo && selectedVideo.questionId === 2 && (
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Engages team through appropriate tone and energy</li>
+                          <li>Uses effective pauses and emphasis</li>
+                          <li>Maintains eye contact and connection</li>
+                        </ul>
+                      )}
+                      {selectedVideo && selectedVideo.questionId === 3 && (
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Tells story with appropriate emotion and energy</li>
+                          <li>Varies pace to emphasize key moments</li>
+                          <li>Maintains engagement throughout the narrative</li>
+                        </ul>
+                      )}
+                      {selectedVideo && (!selectedVideo.questionId || ![1, 2, 3].includes(selectedVideo.questionId)) && (
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Maintains audience engagement</li>
+                          <li>Uses appropriate vocal variety and body language</li>
+                          <li>Demonstrates confidence and enthusiasm</li>
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Impact and Effectiveness */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label htmlFor="impactEffectiveness" className="block text-sm font-medium text-gray-700">
+                        Impact and Effectiveness: {criteriaScores.impactEffectiveness}/10
+                      </label>
+                    </div>
+                    <input
+                      type="range"
+                      id="impactEffectiveness"
+                      min="0"
+                      max="10"
+                      step="0.5"
+                      value={criteriaScores.impactEffectiveness}
+                      onChange={(e) => handleCriteriaScoreChange('impactEffectiveness', e.target.value)}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#592538]"
+                    />
+                    <div className="mt-2 text-xs text-gray-600 bg-white p-2 rounded border">
+                      {selectedVideo && selectedVideo.questionId === 1 && (
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Audience likely to understand and remember the concept</li>
+                          <li>Explanation leaves clear and memorable impression</li>
+                          <li>Demonstrates confidence and professionalism</li>
+                        </ul>
+                      )}
+                      {selectedVideo && selectedVideo.questionId === 2 && (
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Clearly articulates update's importance to the team</li>
+                          <li>Motivates team to act or align with the update</li>
+                          <li>Confident demeanor reinforces update's credibility</li>
+                        </ul>
+                      )}
+                      {selectedVideo && selectedVideo.questionId === 3 && (
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Conveys significance of challenge and effectiveness of solution</li>
+                          <li>Demonstrates problem-solving skills and resilience</li>
+                          <li>Confident delivery reinforces credibility of approach</li>
+                        </ul>
+                      )}
+                      {selectedVideo && (!selectedVideo.questionId || ![1, 2, 3].includes(selectedVideo.questionId)) && (
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Achieves intended purpose of the presentation</li>
+                          <li>Leaves audience with clear understanding</li>
+                          <li>Professional and credible delivery</li>
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">Overall Score:</span>
+                    {selectedVideo.score !== null ? (
                       <span className="text-lg font-bold text-[#592538]">{calculateTotalScore()} / 10</span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Average of the three criteria scores</p>
+                    ) : (
+                      <span className="text-sm font-medium px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">Waiting for admin evaluation</span>
+                    )}
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">{selectedVideo.score !== null ? 'Average of the three criteria scores' : 'This submission has not been evaluated yet'}</p>
                 </div>
-                
-                <div>
-                  <label htmlFor="feedback" className="block text-sm font-medium text-gray-700 mb-1">
-                    Detailed Feedback
-                  </label>
-                  <textarea
-                    id="feedback"
-                    rows="4"
-                    value={feedback}
-                    onChange={(e) => setFeedback(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-[#592538] focus:border-[#592538]"
-                    placeholder="Provide constructive feedback on the presentation..."
-                  />
-                </div>
-                
-                <button
-                  onClick={handleSubmitEvaluation}
-                  disabled={submitting}
-                  className="w-full bg-[#592538] text-white py-2 px-4 rounded-md hover:bg-[#6d2c44] transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#592538] disabled:opacity-50"
-                >
-                  {submitting ? 'Submitting...' : 'Submit Evaluation'}
-                </button>
               </div>
+              
+              <div>
+                <label htmlFor="feedback" className="block text-sm font-medium text-gray-700 mb-1">
+                  Detailed Feedback
+                </label>
+                <textarea
+                  id="feedback"
+                  rows="4"
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-[#592538] focus:border-[#592538]"
+                  placeholder="Provide constructive feedback on the presentation..."
+                />
+              </div>
+              
+              <button
+                onClick={handleSubmitEvaluation}
+                disabled={submitting}
+                className="w-full bg-[#592538] text-white py-2 px-4 rounded-md hover:bg-[#6d2c44] transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#592538] disabled:opacity-50"
+              >
+                {submitting ? 'Submitting...' : 'Submit Evaluation'}
+              </button>
             </div>
-          ) : (
-            <div className="bg-white rounded-2xl shadow-lg p-6 flex items-center justify-center h-full">
-              <p className="text-gray-500 text-lg">Select a video from the list to evaluate</p>
-            </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-lg p-6 flex items-center justify-center h-64">
+            <p className="text-gray-500 text-lg">Select a video from the list to evaluate</p>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

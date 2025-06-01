@@ -1,7 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import User from '../models/user.js';
+import User from '../models/User.js';
 import Supervisor from '../models/supervisor.model.js';
 import { sendConfirmationEmail } from '../services/emailService.js';
 import bcrypt from 'bcryptjs';
