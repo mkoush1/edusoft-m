@@ -41,6 +41,10 @@ const AssessmentCard = ({ assessment, onViewResults }) => {
       localStorage.setItem('currentQuizCategory', 'leadership');
       navigate("/assessment/instructions/leadership");
     }
+    // Communication Skills Assessment
+    else if (normalizedCategory === "communication" || assessment.title?.toLowerCase().includes("communication")) {
+      navigate("/communication-assessment");
+    }
     // Adaptability & Flexibility card (go to instructions page first)
     else if (
       normalizedCategory === "adaptability and flexibility" ||
