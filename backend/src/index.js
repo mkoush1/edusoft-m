@@ -8,6 +8,7 @@ import userRoutes from './routes/user.js';
 import assessmentRoutes from './routes/assessmentRoutes.js';
 import puzzleRoutes from './routes/puzzleRoutes.js';
 import presentationAssessmentRoutes from './routes/presentationAssessment.routes.js';
+<<<<<<< HEAD
 import speakingQuestionRoutes from './routes/speakingQuestionRoutes.js';
 import writingAssessmentRoutes from './routes/writingAssessmentRoutes.js';
 import speakingAssessmentRoutes from './routes/speakingAssessmentRoutes.js';
@@ -15,6 +16,9 @@ import listeningAssessmentRoutes from './routes/listeningAssessmentRoutes.js';
 import cloudinaryRoutes from './routes/cloudinaryRoutes.js';
 import readingAssessmentRoutes from './routes/readingAssessmentRoutes.js';
 import communicationRoutes from './routes/communicationRoutes.js';
+=======
+import leetcodeAssessmentRoutes from './routes/leetcodeAssessment.routes.js';
+>>>>>>> 4d287808e4b73de51ca1981d19587e0dd481dc8f
 
 // Load environment variables
 dotenv.config();
@@ -59,6 +63,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/assessments', assessmentRoutes);
 app.use('/api/puzzle', puzzleRoutes);
 app.use('/api/assessments/presentation', presentationAssessmentRoutes);
+<<<<<<< HEAD
 app.use('/api/speaking-questions', speakingQuestionRoutes);
 app.use('/api/writing-assessment', writingAssessmentRoutes);
 app.use('/api/speaking-assessment', speakingAssessmentRoutes);
@@ -66,6 +71,9 @@ app.use('/api/listening-assessment', listeningAssessmentRoutes);
 app.use('/api/reading-assessment', readingAssessmentRoutes);
 app.use('/api/cloudinary', cloudinaryRoutes);
 app.use('/api/communication', communicationRoutes);
+=======
+app.use('/api/assessments/leetcode', leetcodeAssessmentRoutes);
+>>>>>>> 4d287808e4b73de51ca1981d19587e0dd481dc8f
 
 // Connect to MongoDB
 const connectDB = async () => {

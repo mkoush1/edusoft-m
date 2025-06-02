@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import User from '../models/user.js';
 import Supervisor from '../models/supervisor.model.js';
 import { sendConfirmationEmail } from '../services/emailService.js';
+import { sendPasswordResetEmail } from '../services/emailService.js';
 import bcrypt from 'bcryptjs';
 import Admin from '../models/Admin.js';
 
@@ -213,6 +214,7 @@ router.get('/user/confirm-email/:token', async (req, res) => {
     let user = await User.findOne({
       emailVerificationToken: token
     });
+    console.log('User found for token:', user);
 
     if (!user) {
       return res.status(200).json({ message: 'This confirmation link is invalid or has already been used. Redirecting to login...', alreadyVerified: false });
@@ -223,15 +225,15 @@ router.get('/user/confirm-email/:token', async (req, res) => {
         const result = await User.updateOne(
           { _id: user._id },
           {
-            $set: {
-              isEmailVerified: true,
-              emailVerificationToken: undefined,
-              emailVerificationExpires: undefined
-            }
+            $set: { isEmailVerified: true },
+            $unset: { emailVerificationToken: "", emailVerificationExpires: "" }
           }
         );
         console.log('User email verified and updated directly in DB:', user.email);
         console.log('Update result:', result);
+        // Fetch the user again to check the value
+        const updatedUser = await User.findById(user._id);
+        console.log('Updated user after verification:', updatedUser);
         return res.status(200).json({ message: 'Email confirmed successfully! You can now log in.', user: { email: user.email }, updateResult: result });
       } catch (updateErr) {
         console.error('Error updating user after email verification:', updateErr);
@@ -294,8 +296,8 @@ router.post('/supervisor/signup', async (req, res) => {
 
     // Send confirmation email
     try {
-      const backendUrl = process.env.BACKEND_URL || "http://localhost:5000";
-      const verificationUrl = `${backendUrl}/api/auth/supervisor/confirm-email/${emailVerificationToken}`;
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      const verificationUrl = `${frontendUrl}/confirm-email/${emailVerificationToken}`;
       await sendConfirmationEmail(newSupervisor.Email, verificationUrl);
       console.log('Confirmation email sent successfully to supervisor:', newSupervisor.Email);
     } catch (emailError) {
@@ -417,6 +419,7 @@ router.post('/user/login', async (req, res) => {
     console.log('Password provided:', password ? 'Yes' : 'No');
 
     const user = await User.findOne({ email: email.toLowerCase() });
+    console.log('User found for login:', user);
     if (!user) {
       console.log('User not found for email:', email);
       return res.status(401).json({ 
@@ -425,16 +428,10 @@ router.post('/user/login', async (req, res) => {
       });
     }
 
-    console.log('User found:', {
-      id: user._id,
-      email: user.email,
-      name: user.name,
-      hasPassword: !!user.password,
-      passwordLength: user.password ? user.password.length : 0
-    });
+    console.log('User isEmailVerified:', user.isEmailVerified);
 
     const isMatch = await user.matchPassword(password);
-    console.log('Final password comparison result:', isMatch);
+    console.log('Password comparison result:', isMatch);
 
     if (!isMatch) {
       console.log('Password mismatch for user:', email);
@@ -446,6 +443,7 @@ router.post('/user/login', async (req, res) => {
 
     // Require email verification for students
     if (!user.isEmailVerified) {
+      console.log('User email not verified for login:', email);
       return res.status(401).json({ 
         message: 'Please verify your email first',
         email: user.email
@@ -685,10 +683,10 @@ router.post('/reset-password', async (req, res) => {
     console.log('User found, resetting password');
     // Handle different password field names for User and Supervisor
     if (userType === 'supervisor') {
-      const bcrypt = require('bcryptjs');
       const hashed = await bcrypt.hash(password, 10);
       console.log('Resetting supervisor password:', { plain: password, hash: hashed });
       user.Password = hashed;
+      user.markModified('Password');
     } else {
       user.password = password;
     }
@@ -709,20 +707,48 @@ router.post('/reset-password', async (req, res) => {
 router.get('/supervisor/confirm-email/:token', async (req, res) => {
   try {
     const { token } = req.params;
+    console.log('Supervisor email confirmation request for token:', token);
     let supervisor = await Supervisor.findOne({
       emailVerificationToken: token
     });
+    console.log('Supervisor found for token:', supervisor);
 
     if (!supervisor) {
       return res.status(200).json({ message: 'This confirmation link is invalid or has already been used. Redirecting to login...', alreadyVerified: false });
     }
 
     if (!supervisor.isEmailVerified) {
-      supervisor.isEmailVerified = true;
-      supervisor.emailVerificationToken = undefined;
-      supervisor.emailVerificationExpires = undefined;
-      await supervisor.save();
-      console.log('Supervisor email verified:', supervisor.Email);
+      try {
+        console.log('Supervisor _id for update:', supervisor._id);
+        const result = await Supervisor.updateOne(
+          { _id: supervisor._id },
+          {
+            $set: { isEmailVerified: true },
+            $unset: { emailVerificationToken: "", emailVerificationExpires: "" }
+          }
+        );
+        console.log('Supervisor email verified and updated directly in DB:', supervisor.Email);
+        console.log('Update result:', result);
+        // Fetch the supervisor again to check the value
+        let updatedSupervisor = await Supervisor.findById(supervisor._id);
+        console.log('Updated supervisor after verification:', updatedSupervisor);
+        if (result.modifiedCount === 0 || !updatedSupervisor.isEmailVerified) {
+          console.log('No document modified, trying native MongoDB driver update...');
+          const nativeResult = await Supervisor.collection.updateOne(
+            { _id: supervisor._id },
+            {
+              $set: { isEmailVerified: true },
+              $unset: { emailVerificationToken: "", emailVerificationExpires: "" }
+            }
+          );
+          console.log('Native MongoDB driver update result:', nativeResult);
+          updatedSupervisor = await Supervisor.findById(supervisor._id);
+          console.log('Updated supervisor after native update:', updatedSupervisor);
+        }
+      } catch (updateErr) {
+        console.error('Error updating supervisor after email verification:', updateErr);
+        return res.status(500).json({ message: 'Error updating supervisor after verification', error: updateErr.message });
+      }
     }
 
     return res.status(200).json({ message: 'Email confirmed successfully! You can now log in.', user: { email: supervisor.Email } });
