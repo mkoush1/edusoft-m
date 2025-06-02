@@ -4,7 +4,7 @@ import TestQuestion from '../models/TestQuestion.js';
 import LeadershipQuestion from '../models/leadership_testBank.js';
 import AssessmentResult from '../models/AssessmentResult.js';
 import { authenticateToken } from '../middleware/auth.js';
-import User from '../models/User.js';
+import User from '../models/user.js';
 import ProblemSolvingAssessment from '../models/ProblemSolvingAssessment.js';
 import ProblemSolvingQuestion from '../models/problemSolvingQuestionBank.js';
 import Puzzle from '../models/Puzzle.js';

@@ -16,7 +16,7 @@ const PresentationFetch = () => {
       }
 
       const response = await axios.get(
-        "http://localhost:5000/api/assessments/presentation/videos",
+        "http://localhost:5000/api/assessments/presentation/admin-videos",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -50,7 +50,7 @@ const PresentationFetch = () => {
       }
 
       await axios.delete(
-        `http://localhost:5000/api/assessments/presentation/videos/${videoId}`,
+        `http://localhost:5000/api/assessments/presentation/admin-videos/${videoId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

@@ -1,0 +1,18 @@
+{
+  "name": "edusoft",
+  "version": "1.0.0",
+  "description": "EduSoft is a comprehensive educational management system that provides a platform for supervisors and users to manage educational content and track progress.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "googleapis": "^149.0.0",
+    "mongoose": "^8.15.1",
+    "multer": "^2.0.0"
+  }
+}

@@ -1,10 +1,13 @@
 import express from 'express';
 import { submitPresentation, getQuestions, checkCompletion, getVideos, deleteVideo, evaluateVideo, getUserSubmissions, getPresentationRecommendations, evaluateSubmission } from '../controllers/presentationAssessment.controller.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, isAdmin } from '../middleware/auth.js';
 import fileUpload from 'express-fileupload';
 import PresentationSubmission from '../models/PresentationSubmission.js';
 
 const router = express.Router();
+
+// Apply authentication middleware to all routes
+router.use(authenticateToken);
 
 // Middleware for file uploads
 router.use(fileUpload({
@@ -25,34 +28,43 @@ router.use(fileUpload({
 }));
 
 // Get presentation questions
-router.get('/questions', authenticateToken, getQuestions);
+router.get('/questions', getQuestions);
 
 // Check if user has completed the presentation assessment
-router.get('/check-completion', authenticateToken, checkCompletion);
+router.get('/check-completion', checkCompletion);
 
-// Get all presentation videos
-router.get('/videos', authenticateToken, getVideos);
+// Get all presentation videos (admin access)
+router.get('/videos', isAdmin, getVideos);
 
-// Delete a presentation video
-router.delete('/videos/:id', authenticateToken, deleteVideo);
+// Alternative endpoint for admin access with just authentication
+router.get('/admin-videos', authenticateToken, getVideos);
 
-// Evaluate a presentation video
-router.post('/evaluate/:id', authenticateToken, evaluateVideo);
+// Delete a presentation video (admin access)
+router.delete('/videos/:id', isAdmin, deleteVideo);
+
+// Alternative endpoint for admin delete with just authentication
+router.delete('/admin-videos/:id', authenticateToken, deleteVideo);
+
+// Evaluate a presentation video (admin access)
+router.post('/evaluate/:id', isAdmin, evaluateVideo);
+
+// Alternative endpoint for admin evaluation with just authentication
+router.post('/admin-evaluate/:id', authenticateToken, evaluateVideo);
 
 // Get user's presentation submissions with evaluations
-router.get('/user-submissions', authenticateToken, getUserSubmissions);
+router.get('/user-submissions', getUserSubmissions);
 
-// Submit a presentation recording (using fixed version with improved error handling and cleanup)
-router.post('/submit', authenticateToken, submitPresentation);
+// Submit a presentation recording
+router.post('/submit', submitPresentation);
 
 // Get presentation recommendations
-router.get('/recommendations', authenticateToken, getPresentationRecommendations);
+router.get('/recommendations', getPresentationRecommendations);
 
-// Evaluate presentation submission with detailed criteria
-router.put('/evaluate-submission/:id', authenticateToken, evaluateSubmission);
+// Evaluate presentation submission with detailed criteria (admin access)
+router.put('/evaluate-submission/:id', isAdmin, evaluateSubmission);
 
 // Get presentation file by ID (redirects to Google Drive)
-router.get('/file/:fileId', authenticateToken, async (req, res) => {
+router.get('/file/:fileId', async (req, res) => {
     try {
         const { fileId } = req.params;
         

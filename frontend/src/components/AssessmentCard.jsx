@@ -28,18 +28,9 @@ const AssessmentCard = ({ assessment, onViewResults }) => {
     else if (assessment._id === "fast-questions") {
       navigate("/assessment/instructions/fast-questions");
     }
-    // LeetCode Link card
-    else if (assessment._id === "leetcode-link") {
-      navigate("/assessment/leetcode");
-    }
-    // Presentation skills
-    else if (normalizedCategory === "presentation") {
-      navigate("/presentation-assessment");
-    }
-    // Leadership
-    else if (normalizedCategory === "leadership") {
-      localStorage.setItem('currentQuizCategory', 'leadership');
-      navigate("/assessment/instructions/leadership");
+    // Codeforces Link card (add your route if exists)
+    else if (assessment._id === "codeforces-link") {
+      navigate("/assessment/codeforces-link");
     }
     // Presentation skills
     else if (normalizedCategory === "presentation") {

@@ -205,10 +205,46 @@ const AssessmentsPage = () => {
   return (
     <DashboardLayout title="Skill Assessments">
       <div className="space-y-12">
-        {/* Available Assessments */}
+        {/* Presentation Skills Assessment */}
         <section>
           <h2 className="text-2xl font-semibold text-[#592538] mb-6">
-            Available Assessments
+            Featured Assessment
+          </h2>
+          <div className="bg-white rounded-xl shadow-md overflow-hidden border-t-4 border-[#592538] mb-10">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-[#592538]">
+                  Presentation Skills Assessment
+                </h3>
+                <span className="text-sm px-3 py-1 rounded-full bg-purple-100 text-purple-800">
+                  Featured
+                </span>
+              </div>
+
+              <p className="text-gray-600 mb-4">
+                Demonstrate your presentation skills by creating and recording a presentation about yourself and a challenging experience from high school. You'll have 24 hours to complete this assessment.
+              </p>
+
+              <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                <span>Duration: 24 hours to submit</span>
+                <span>Format: Video + Slides</span>
+              </div>
+
+              <button
+                onClick={() => navigate('/presentation-assessment')}
+                className="w-full px-4 py-2 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300 flex items-center justify-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                </svg>
+                Start Presentation Assessment
+              </button>
+            </div>
+          </div>
+          
+          {/* Available Assessments */}
+          <h2 className="text-2xl font-semibold text-[#592538] mb-6">
+            Other Available Assessments
           </h2>
           {availableAssessments.length === 0 ? (
             <div className="bg-white rounded-xl shadow-md p-8 text-center">

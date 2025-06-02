@@ -11,10 +11,11 @@ const PresentationManagement = () => {
   const [feedback, setFeedback] = useState('');
   const [score, setScore] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  // Initialize criteria scores with default values
   const [criteriaScores, setCriteriaScores] = useState({
     contentClarity: 0,
-    engagementDelivery: 0,
-    impactEffectiveness: 0
+    engagement: 0,
+    impact: 0
   });
   const navigate = useNavigate();
 
@@ -78,7 +79,7 @@ const PresentationManagement = () => {
       }
 
       const response = await axios.get(
-        'http://localhost:5000/api/assessments/presentation/videos',
+        'http://localhost:5000/api/assessments/presentation/admin-videos',
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -108,22 +109,22 @@ const PresentationManagement = () => {
     if (video.criteriaScores) {
       setCriteriaScores({
         contentClarity: video.criteriaScores.contentClarity || 0,
-        engagementDelivery: video.criteriaScores.engagementDelivery || 0,
-        impactEffectiveness: video.criteriaScores.impactEffectiveness || 0
+        engagement: video.criteriaScores.engagement || 0,
+        impact: video.criteriaScores.impact || 0
       });
     } else {
       // Reset criteria scores if not available
       setCriteriaScores({
         contentClarity: 0,
-        engagementDelivery: 0,
-        impactEffectiveness: 0
+        engagement: 0,
+        impact: 0
       });
     }
   };
 
   const calculateTotalScore = () => {
     // Calculate the average of the three criteria scores, rounded to nearest integer
-    const total = (criteriaScores.contentClarity + criteriaScores.engagementDelivery + criteriaScores.impactEffectiveness) / 3;
+    const total = (criteriaScores.contentClarity + criteriaScores.engagement + criteriaScores.impact) / 3;
     return Math.round(total * 10) / 10; // Round to 1 decimal place
   };
 
@@ -131,13 +132,27 @@ const PresentationManagement = () => {
     // Ensure value is between 0 and 10
     const newValue = Math.min(10, Math.max(0, parseFloat(value) || 0));
     
-    setCriteriaScores(prev => ({
-      ...prev,
-      [criterion]: newValue
-    }));
+    // Log before update
+    console.log(`Updating ${criterion} from ${criteriaScores[criterion]} to ${newValue}`);
     
-    // Update the total score based on criteria
-    setScore(calculateTotalScore());
+    // Update the criteria scores state
+    setCriteriaScores(prev => {
+      const updated = {
+        ...prev,
+        [criterion]: newValue
+      };
+      
+      // Log the updated state
+      console.log('Updated criteria scores:', updated);
+      return updated;
+    });
+    
+    // Update the total score based on criteria (will use previous state due to React's batching)
+    setTimeout(() => {
+      const newTotal = calculateTotalScore();
+      console.log('New calculated total score:', newTotal);
+      setScore(newTotal);
+    }, 0);
   };
 
   const handleSubmitEvaluation = async () => {
@@ -152,18 +167,28 @@ const PresentationManagement = () => {
 
       // Calculate final score based on criteria
       const finalScore = calculateTotalScore();
+      
+      // Debug logs
+      console.log('Current criteria scores state:', criteriaScores);
+      console.log('Calculated final score:', finalScore);
 
-      await axios.post(
-        `http://localhost:5000/api/assessments/presentation/evaluate/${selectedVideo._id}`,
-        {
-          score: finalScore,
-          feedback,
-          criteriaScores: {
-            contentClarity: criteriaScores.contentClarity,
-            engagementDelivery: criteriaScores.engagementDelivery,
-            impactEffectiveness: criteriaScores.impactEffectiveness
-          }
-        },
+      // Prepare request payload
+      const payload = {
+        score: finalScore,
+        feedback,
+        criteriaScores: {
+          contentClarity: criteriaScores.contentClarity,
+          engagement: criteriaScores.engagement,
+          impact: criteriaScores.impact
+        }
+      };
+      
+      // Log the exact payload being sent
+      console.log('Sending evaluation payload to backend:', JSON.stringify(payload));
+      
+      const response = await axios.post(
+        `http://localhost:5000/api/assessments/presentation/admin-evaluate/${selectedVideo._id}`,
+        payload,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -171,6 +196,9 @@ const PresentationManagement = () => {
           },
         }
       );
+      
+      // Log the response
+      console.log('Evaluation response from backend:', response.data);
 
       // Refresh the videos list
       await fetchVideos();
@@ -372,18 +400,18 @@ const PresentationManagement = () => {
                   {/* Engagement and Delivery */}
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <label htmlFor="engagementDelivery" className="block text-sm font-medium text-gray-700">
-                        Engagement and Delivery: {criteriaScores.engagementDelivery}/10
+                      <label htmlFor="engagement" className="block text-sm font-medium text-gray-700">
+                        Engagement and Delivery: {criteriaScores.engagement}/10
                       </label>
                     </div>
                     <input
                       type="range"
-                      id="engagementDelivery"
+                      id="engagement"
                       min="0"
                       max="10"
                       step="0.5"
-                      value={criteriaScores.engagementDelivery}
-                      onChange={(e) => handleCriteriaScoreChange('engagementDelivery', e.target.value)}
+                      value={criteriaScores.engagement}
+                      onChange={(e) => handleCriteriaScoreChange('engagement', e.target.value)}
                       className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#592538]"
                     />
                     <div className="mt-2 text-xs text-gray-600 bg-white p-2 rounded border">
@@ -421,18 +449,18 @@ const PresentationManagement = () => {
                   {/* Impact and Effectiveness */}
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <label htmlFor="impactEffectiveness" className="block text-sm font-medium text-gray-700">
-                        Impact and Effectiveness: {criteriaScores.impactEffectiveness}/10
+                      <label htmlFor="impact" className="block text-sm font-medium text-gray-700">
+                        Impact and Effectiveness: {criteriaScores.impact}/10
                       </label>
                     </div>
                     <input
                       type="range"
-                      id="impactEffectiveness"
+                      id="impact"
                       min="0"
                       max="10"
                       step="0.5"
-                      value={criteriaScores.impactEffectiveness}
-                      onChange={(e) => handleCriteriaScoreChange('impactEffectiveness', e.target.value)}
+                      value={criteriaScores.impact}
+                      onChange={(e) => handleCriteriaScoreChange('impact', e.target.value)}
                       className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#592538]"
                     />
                     <div className="mt-2 text-xs text-gray-600 bg-white p-2 rounded border">

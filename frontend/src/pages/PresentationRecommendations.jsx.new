@@ -1,0 +1,291 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { FaExclamationTriangle, FaInfoCircle, FaClock } from 'react-icons/fa';
+import { FaPlayCircle, FaExternalLinkAlt } from 'react-icons/fa';
+import DashboardLayout from '../components/DashboardLayout';
+import '../components/PresentationRecommendations.css';
+
+const CourseCard = ({
+  title,
+  institution,
+  description,
+  duration,
+  link,
+  image,
+}) => (
+  <motion.div 
+    whileHover={{ y: -5 }}
+    className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100"
+  >
+    <div className="h-40 overflow-hidden relative group">
+      <img src={image} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
+        <div className="p-3 text-white">
+          <FaPlayCircle className="text-white text-2xl" />
+        </div>
+      </div>
+    </div>
+    <div className="p-5">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-medium bg-[#592538]/10 text-[#592538] px-3 py-1 rounded-full">
+          {institution}
+        </span>
+        <span className="text-sm text-gray-500 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {duration}
+        </span>
+      </div>
+      <h3 className="text-lg font-bold text-[#592538] mb-2">{title}</h3>
+      <p className="text-gray-600 text-sm mb-4 line-clamp-2">{description}</p>
+      <a
+        href={link}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center px-4 py-2 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300 text-sm font-medium shadow-sm"
+      >
+        <span>Learn More</span>
+        <FaExternalLinkAlt className="ml-2 text-xs" />
+      </a>
+    </div>
+  </motion.div>
+);
+
+const PresentationRecommendations = () => {
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
+  const [hasSubmitted, setHasSubmitted] = React.useState(false);
+  const [isEvaluated, setIsEvaluated] = React.useState(false);
+  const [recommendations, setRecommendations] = React.useState({
+    score: 0,
+    strengths: [],
+    improvements: [],
+    recommendations: [
+      {
+        title: 'Public Speaking Mastery',
+        description: 'Learn advanced techniques for engaging presentations, including body language, voice modulation, and audience interaction.',
+        link: 'https://www.coursera.org/learn/public-speaking'
+      },
+      {
+        title: 'Presentation Design Principles',
+        description: 'Master the art of creating visually appealing and effective presentation slides that support your message.',
+        link: 'https://www.udemy.com/course/presentation-design/'
+      },
+      {
+        title: 'Storytelling for Presentations',
+        description: 'Learn how to craft compelling narratives that make your presentations more memorable and impactful.',
+        link: 'https://www.linkedin.com/learning/storytelling-for-presentations'
+      },
+      {
+        title: 'Confidence Building for Speakers',
+        description: 'Develop the confidence and presence needed to deliver powerful presentations in any setting.',
+        link: 'https://www.skillshare.com/classes/Confidence-Building-for-Public-Speaking'
+      }
+    ]
+  });
+  
+  React.useEffect(() => {
+    const checkSubmissionStatus = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+        
+        // Check if user has submitted and if it's been evaluated
+        const response = await fetch('http://localhost:5000/api/assessments/presentation/videos', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          setHasSubmitted(data.hasSubmitted);
+          
+          // Check if any of the user's submissions have been evaluated
+          if (data.hasSubmitted) {
+            const userVideos = data.videos.filter(video => video.userId === data.currentUserId);
+            const evaluatedSubmission = userVideos.find(video => video.score !== null);
+            
+            if (evaluatedSubmission) {
+              setIsEvaluated(true);
+              // In a real app, you would use the actual evaluation data here
+              setRecommendations(prevRecs => ({
+                ...prevRecs,
+                score: evaluatedSubmission.score || 75
+              }));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error checking submission status:', err);
+        setError('Failed to load your evaluation data. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    checkSubmissionStatus();
+  }, []);
+
+  return (
+    <DashboardLayout title="Presentation Recommendations">
+      <motion.div 
+        className="recommendations-container p-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="mb-6">
+          <Link 
+            to="/dashboard" 
+            className="inline-flex items-center text-[#592538] hover:text-[#6d2c44] transition-colors"
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="h-5 w-5 mr-2" 
+              viewBox="0 0 20 20" 
+              fill="currentColor"
+            >
+              <path 
+                fillRule="evenodd" 
+                d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" 
+                clipRule="evenodd" 
+              />
+            </svg>
+            Back to Dashboard
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="loading-container">
+            <div className="spinner"></div>
+            <p>Loading your assessment data...</p>
+          </div>
+        ) : error ? (
+          <div className="error-container">
+            <FaExclamationTriangle className="error-icon" />
+            <p>{error}</p>
+          </div>
+        ) : !hasSubmitted ? (
+          <div className="no-submission-container">
+            <FaInfoCircle className="info-icon" />
+            <h2>No Assessment Submitted</h2>
+            <p>You haven't submitted a presentation assessment yet. Complete an assessment to receive personalized recommendations.</p>
+          </div>
+        ) : (
+          <>
+            <motion.div 
+              className="header"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <h1 className="text-2xl font-bold text-[#592538] mb-2">Presentation Skills Assessment Results</h1>
+              <p className="text-gray-600">Based on your most recent presentation assessment</p>
+            </motion.div>
+
+            {!isEvaluated ? (
+              <motion.div 
+                className="pending-evaluation-container mt-8 p-6 bg-yellow-50 rounded-lg border-l-4 border-yellow-400"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+              >
+                <div className="flex items-center mb-4">
+                  <FaClock className="text-yellow-500 text-2xl mr-3" />
+                  <h2 className="text-xl font-semibold text-yellow-800">Evaluation Pending</h2>
+                </div>
+                <div className="text-yellow-700 space-y-2">
+                  <p>Your presentation assessment has been submitted and is waiting for admin evaluation.</p>
+                  <p>You will receive detailed feedback and personalized recommendations once your assessment has been evaluated.</p>
+                  <p>In the meantime, you can explore the general resources below to improve your presentation skills.</p>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div 
+                className="score-section mt-8 flex flex-col md:flex-row items-center justify-between p-6 bg-white rounded-lg shadow"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+              >
+                <motion.div 
+                  className="score-circle w-32 h-32 rounded-full bg-gradient-to-br from-[#592538] to-[#8a3a5e] flex flex-col items-center justify-center text-white mb-6 md:mb-0"
+                  initial={{ scale: 0.8 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.6 }}
+                >
+                  <span className="text-4xl font-bold">{recommendations.score}</span>
+                  <span className="text-sm opacity-80">out of 10</span>
+                </motion.div>
+                <motion.div 
+                  className="score-details max-w-md"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.8 }}
+                >
+                  <h3 className="text-xl font-semibold text-gray-800 mb-2">Overall Score</h3>
+                  <p className="text-gray-600 mb-3">This score reflects your performance across:</p>
+                  <ul className="grid grid-cols-2 gap-2">
+                    <li className="flex items-center">
+                      <span className="w-2 h-2 bg-[#592538] rounded-full mr-2"></span>
+                      Content Quality
+                    </li>
+                    <li className="flex items-center">
+                      <span className="w-2 h-2 bg-[#592538] rounded-full mr-2"></span>
+                      Delivery Skills
+                    </li>
+                    <li className="flex items-center">
+                      <span className="w-2 h-2 bg-[#592538] rounded-full mr-2"></span>
+                      Visual Presentation
+                    </li>
+                    <li className="flex items-center">
+                      <span className="w-2 h-2 bg-[#592538] rounded-full mr-2"></span>
+                      Time Management
+                    </li>
+                  </ul>
+                </motion.div>
+              </motion.div>
+            )}
+          </>
+        )}
+
+        <motion.div 
+          className="mt-12 mb-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 1.0 }}
+        >
+          <h2 className="text-2xl font-bold text-[#592538] mb-2">Recommended Courses</h2>
+          <p className="text-gray-600">Personalized recommendations to help you improve your presentation skills</p>
+        </motion.div>
+
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 1.2 }}
+        >
+          {recommendations.recommendations.map((course, index) => (
+            <CourseCard
+              key={index}
+              title={course.title}
+              institution="Online Course"
+              description={course.description}
+              duration="Self-paced"
+              link={course.link}
+              image="/default-course-image.png"
+            />
+          ))}
+        </motion.div>
+      </motion.div>
+    </DashboardLayout>
+  );
+};
+
+export default PresentationRecommendations;

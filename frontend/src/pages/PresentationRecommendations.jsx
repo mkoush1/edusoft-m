@@ -121,22 +121,26 @@ const PresentationRecommendations = () => {
           throw new Error('No authentication token found');
         }
         
-        // Fetch user's submission data
-        const response = await fetch('http://localhost:5000/api/assessments/presentation/videos', {
+        // Fetch user's submission data using user-submissions endpoint
+        const response = await fetch('http://localhost:5000/api/assessments/presentation/user-submissions', {
           headers: {
             Authorization: `Bearer ${token}`
           }
         });
         
         const data = await response.json();
+        console.log('User submissions response:', data);
         
         if (data.success) {
-          setHasSubmitted(data.hasSubmitted);
+          // Check if user has any submissions
+          const hasSubmissions = data.submissions && data.submissions.length > 0;
+          setHasSubmitted(hasSubmissions);
+          console.log('Has submissions:', hasSubmissions);
           
-          if (data.hasSubmitted) {
+          if (hasSubmissions) {
             // Find the user's evaluated submission
-            const userVideos = data.videos.filter(video => video.userId === data.currentUserId);
-            const evaluatedSubmission = userVideos.find(video => video.score !== null);
+            const evaluatedSubmission = data.submissions.find(submission => submission.score !== null);
+            console.log('Evaluated submission found:', !!evaluatedSubmission);
             
             if (evaluatedSubmission) {
               setIsEvaluated(true);
@@ -145,14 +149,41 @@ const PresentationRecommendations = () => {
               console.log('Evaluated submission:', evaluatedSubmission);
               console.log('Criteria scores from backend:', evaluatedSubmission.criteriaScores);
               
+              // Log raw criteria scores from backend
+              console.log('Raw criteria scores from backend:', evaluatedSubmission.criteriaScores);
+              
               // Create criteria scores object with fallbacks
               const criteriaScores = {
                 contentClarity: evaluatedSubmission.criteriaScores?.contentClarity || 0,
-                engagementDelivery: evaluatedSubmission.criteriaScores?.engagementDelivery || 0,
-                impactEffectiveness: evaluatedSubmission.criteriaScores?.impactEffectiveness || 0
+                engagement: evaluatedSubmission.criteriaScores?.engagement || 0,
+                impact: evaluatedSubmission.criteriaScores?.impact || 0
               };
               
               console.log('Processed criteria scores:', criteriaScores);
+              
+              // Additional check to ensure we're getting the right data
+              if (criteriaScores.engagement === 0 && criteriaScores.impact === 0 && 
+                  evaluatedSubmission.criteriaScores && Object.keys(evaluatedSubmission.criteriaScores).length > 0) {
+                console.warn('WARNING: Engagement and Impact scores are 0 despite having criteria scores data');
+                console.log('Available keys in criteriaScores:', Object.keys(evaluatedSubmission.criteriaScores));
+                
+                // Try to find alternative field names that might contain the data
+                const alternativeFields = {
+                  engagementDelivery: evaluatedSubmission.criteriaScores?.engagementDelivery,
+                  impactEffectiveness: evaluatedSubmission.criteriaScores?.impactEffectiveness
+                };
+                console.log('Checking alternative field names:', alternativeFields);
+                
+                // If alternative fields exist, use them
+                if (alternativeFields.engagementDelivery !== undefined) {
+                  criteriaScores.engagement = alternativeFields.engagementDelivery;
+                }
+                if (alternativeFields.impactEffectiveness !== undefined) {
+                  criteriaScores.impact = alternativeFields.impactEffectiveness;
+                }
+                
+                console.log('Updated criteria scores after checking alternatives:', criteriaScores);
+              }
               
               // Update evaluation data with actual values from the server
               setEvaluationData({
@@ -167,7 +198,12 @@ const PresentationRecommendations = () => {
               // Debug log after state update
               setTimeout(() => console.log('Evaluation data state:', evaluationData), 100);
             }
+          } else {
+            console.log('No submissions found for this user');
           }
+        } else {
+          console.error('API returned error:', data.message || 'Unknown error');
+          setError(data.message || 'Failed to load your submission data');
         }
       } catch (err) {
         console.error('Error checking submission status:', err);
@@ -291,7 +327,7 @@ const PresentationRecommendations = () => {
                         <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
                           <div className="flex justify-between items-center">
                             <div className="text-md font-medium text-gray-700">Engagement and Delivery</div>
-                            <div className="text-xl font-bold text-[#592538]">{evaluationData.criteriaScores?.engagementDelivery || 0}/10</div>
+                            <div className="text-xl font-bold text-[#592538]">{evaluationData.criteriaScores?.engagement || 0}/10</div>
                           </div>
                           <div className="mt-2 text-sm text-gray-600">Maintains audience interest through vocal variety and appropriate gestures</div>
                         </div>
@@ -299,7 +335,7 @@ const PresentationRecommendations = () => {
                         <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
                           <div className="flex justify-between items-center">
                             <div className="text-md font-medium text-gray-700">Impact and Effectiveness</div>
-                            <div className="text-xl font-bold text-[#592538]">{evaluationData.criteriaScores?.impactEffectiveness || 0}/10</div>
+                            <div className="text-xl font-bold text-[#592538]">{evaluationData.criteriaScores?.impact || 0}/10</div>
                           </div>
                           <div className="mt-2 text-sm text-gray-600">Leaves clear and memorable impression with confidence and professionalism</div>
                         </div>

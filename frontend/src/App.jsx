@@ -33,11 +33,11 @@ import PresentationAssessment from "./pages/PresentationAssessment";
 import PresentationRecommendations from "./pages/PresentationRecommendations";
 import PresentationFetch from "./pages/PresentationFetch";
 import PresentationQuestions from "./pages/PresentationQuestions";
+import PresentationAssessmentNew from "./pages/PresentationAssessmentNew";
 import AssessmentInstructionsLeadership from "./pages/AssessmentInstructions_leadership";
 import AssessmentInstructionsFast from "./pages/AssessmentInstructions_fast";
 import AssessmentQuizFast from "./pages/AssessmentQuiz_fast";
 import PuzzleInstructions from "./components/PuzzleInstructions";
-import LeetCodeAssessment from "./pages/LeetCodeAssessment";
 import AssessmentInstructionsAdaptability from "./pages/AssessmentInstructions_adaptability";
 import AssessmentQuizAdaptability from "./pages/AssessmentQuiz_adaptability";
 import Recommendations from "./pages/Recommendations";
@@ -65,7 +65,6 @@ const App = () => {
         <Route path="/assessment/puzzle-game" element={<PuzzleGameAssessment />} />
         <Route path="/assessment/puzzle-game/instructions" element={<PuzzleInstructions />} />
         <Route path="/assessment/puzzle-game/start" element={<PuzzleGameAssessment />} />
-        <Route path="/assessment/leetcode" element={<LeetCodeAssessment />} />
         <Route
           path="/assessment/quiz/leadership"
           element={<AssessmentQuiz />}
@@ -81,7 +80,7 @@ const App = () => {
         <Route path="/progress" element={<ProgressPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/confirm-email/:token" element={<ConfirmEmail />} />
-        <Route path="/presentation-assessment" element={<PresentationAssessment />} />
+        <Route path="/presentation-assessment" element={<PresentationAssessmentNew />} />
         <Route path="/presentation-recommendations" element={<PresentationRecommendations />} />
         <Route path="/presentation-fetch" element={<PresentationFetch />} />
         <Route path="/presentation-questions" element={<PresentationQuestions />} />

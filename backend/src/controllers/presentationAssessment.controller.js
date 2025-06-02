@@ -2,6 +2,7 @@ import cloudinary from '../config/cloudinary.js';
 import { GridFSBucket, ObjectId } from 'mongodb';
 import mongoose from 'mongoose';
 import PresentationSubmission from '../models/PresentationSubmission.js';
+import PresentationQuestion from '../models/PresentationQuestion.js';
 import User from '../models/User.js';
 import { calculateAverageScore } from '../utils/scoreUtils.js';
 import { dirname } from 'path';
@@ -210,6 +211,8 @@ export const getVideos = async (req, res) => {
     }
 };
 
+// getUserSubmissions function is implemented below at line ~300
+
 export const deleteVideo = async (req, res) => {
     try {
         const videoId = req.params.id;
@@ -260,17 +263,16 @@ export const getUserSubmissions = async (req, res) => {
         
         // Find all submissions for this user
         const submissions = await PresentationSubmission.find({ userId })
-            .sort({ questionId: 1 }); // Sort by question number
+            .sort({ submittedAt: -1 })
+            .lean();
+        
+        console.log(`Found ${submissions.length} submissions for user ${userId}`);
         
         if (!submissions || submissions.length === 0) {
             return res.status(200).json({
                 success: true,
-                message: 'No submissions found for this user',
-                data: {
-                    submissions: [],
-                    hasEvaluation: false,
-                    averageScore: null
-                }
+                submissions: [],
+                hasSubmitted: false
             });
         }
         
@@ -285,28 +287,47 @@ export const getUserSubmissions = async (req, res) => {
             averageScore = Math.round((totalScore / evaluatedSubmissions.length) * 10) / 10; // Round to 1 decimal place
         }
         
-        // Format the response
-        const formattedSubmissions = submissions.map(sub => ({
-            questionId: sub.questionId,
-            videoPath: sub.videoPath,
-            submittedAt: sub.submittedAt,
-            score: sub.score,
-            feedback: sub.feedback,
-            criteriaScores: sub.criteriaScores || {
-                contentClarity: 0,
-                engagement: 0,
-                impact: 0
-            },
-            reviewedAt: sub.reviewedAt
+        // Format the submissions for the response
+        const formattedSubmissions = submissions.map(submission => ({
+            _id: submission._id,
+            questionId: submission.questionId,
+            videoUrl: submission.screenRecording?.url || submission.videoPath || null,
+            thumbnailUrl: submission.screenRecording?.thumbnailUrl || null,
+            presentationFile: submission.presentationFile ? {
+                fileId: submission.presentationFile.fileId,
+                name: submission.presentationFile.name,
+                downloadLink: submission.presentationFile.downloadLink,
+                webViewLink: submission.presentationFile.webViewLink
+            } : null,
+            submittedAt: submission.submittedAt || submission.createdAt,
+            score: submission.score || null,
+            feedback: submission.feedback || '',
+            criteriaScores: (() => {
+                // Log the raw criteria scores from the database
+                console.log(`Raw criteria scores for submission ${submission._id}:`, JSON.stringify(submission.criteriaScores));
+                
+                // Create a properly formatted object with the correct field names
+                const formattedScores = {
+                    contentClarity: submission.criteriaScores?.contentClarity || 0,
+                    engagement: submission.criteriaScores?.engagement || 0,
+                    impact: submission.criteriaScores?.impact || 0
+                };
+                
+                // Log the formatted scores being sent to frontend
+                console.log(`Formatted criteria scores for submission ${submission._id}:`, JSON.stringify(formattedScores));
+                
+                return formattedScores;
+            })(),
+            reviewedAt: submission.reviewedAt || null,
+            status: submission.score ? 'evaluated' : 'pending'
         }));
         
         res.status(200).json({
             success: true,
-            data: {
-                submissions: formattedSubmissions,
-                hasEvaluation,
-                averageScore
-            }
+            submissions: formattedSubmissions,
+            hasSubmitted: true,
+            hasEvaluation,
+            averageScore
         });
     } catch (error) {
         console.error('Error fetching user presentation submissions:', error);
@@ -369,10 +390,31 @@ export const evaluateVideo = async (req, res) => {
         
         // Add criteria scores if provided
         if (criteriaScores) {
-            submission.criteriaScores = criteriaScores;
+            console.log('Original criteria scores from request:', JSON.stringify(criteriaScores));
+            
+            // IMPORTANT: Directly set the criteria scores in the document
+            // This bypasses any schema validation that might be causing issues
+            submission.set({
+                'criteriaScores.contentClarity': criteriaScores.contentClarity || 0,
+                'criteriaScores.engagement': criteriaScores.engagement || 0,
+                'criteriaScores.impact': criteriaScores.impact || 0
+            });
+            
+            console.log('Criteria scores being saved to submission:', JSON.stringify(submission.criteriaScores));
         }
         
+        // Log submission before saving
+        console.log('Submission before save:', JSON.stringify({
+            id: submission._id,
+            score: submission.score,
+            criteriaScores: submission.criteriaScores
+        }));
+        
         await submission.save();
+        
+        // Verify saved data
+        const savedSubmission = await PresentationSubmission.findById(videoId);
+        console.log('Saved submission criteria scores:', JSON.stringify(savedSubmission.criteriaScores));
         
         // Get the user who submitted the video
         const user = await User.findById(submission.userId);

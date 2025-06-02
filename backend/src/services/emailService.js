@@ -125,20 +125,31 @@ export const sendEmail = async (to, subject, html) => {
 
 export const sendConfirmationEmail = async (email, verificationUrl) => {
   const transporter = createTransporter();
-  
+
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
     subject: 'Confirm your EduSoft account',
     html: `
-      <h1>Welcome to EduSoft!</h1>
-      <p>Thank you for signing up! Please confirm your email address by clicking the link below:</p>
-      <p><a href="${verificationUrl}" style="background:#592538;color:#fff;padding:10px 20px;text-decoration:none;border-radius:5px;">Verify Email</a></p>
-      <p>If the button above does not work, copy and paste this link into your browser:</p>
-      <p><a href="${verificationUrl}">${verificationUrl}</a></p>
-      <p>This link will expire in 24 hours.</p>
-      <hr />
-      <p>If you did not create an account, you can safely ignore this email.</p>
+      <div style="font-family: Arial, sans-serif; background: #f7f4f3; padding: 32px;">
+        <div style="max-width: 480px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 8px #0001; padding: 32px;">
+          <h1 style="color: #592538;">Welcome to EduSoft!</h1>
+          <p style="font-size: 16px; color: #333;">
+            Thank you for signing up! Please confirm your email address by clicking the button below:
+          </p>
+          <a href="${verificationUrl}" style="display: inline-block; margin: 24px 0; padding: 12px 32px; background: #592538; color: #fff; border-radius: 6px; text-decoration: none; font-size: 18px;">
+            Confirm Email
+          </a>
+          <p style="font-size: 14px; color: #666;">
+            If the button above does not work, copy and paste this link into your browser:<br>
+            <a href="${verificationUrl}" style="color: #592538;">${verificationUrl}</a>
+          </p>
+          <hr style="margin: 32px 0;">
+          <p style="font-size: 12px; color: #aaa;">
+            If you did not create an account, you can safely ignore this email.
+          </p>
+        </div>
+      </div>
     `
   };
 

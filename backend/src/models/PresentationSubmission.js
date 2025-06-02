@@ -95,13 +95,13 @@ const presentationSubmissionSchema = new mongoose.Schema({
             max: 10,
             default: 0
         },
-        engagementDelivery: {
+        engagement: {
             type: Number,
             min: 0,
             max: 10,
             default: 0
         },
-        impactEffectiveness: {
+        impact: {
             type: Number,
             min: 0,
             max: 10,
