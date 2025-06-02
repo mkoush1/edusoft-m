@@ -493,12 +493,12 @@ const PresentationAssessmentNew = () => {
               <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-100">
                 <h2 className="text-xl font-semibold text-[#592538] mb-4 flex items-center">
                   <span className="bg-[#592538] text-white rounded-full w-7 h-7 inline-flex items-center justify-center mr-2 text-sm">1</span>
-                  Instructions
+                  Assessment Overview
                 </h2>
                 <ul className="space-y-3 text-gray-700 pl-4">
                   <li className="flex items-start">
                     <span className="text-[#592538] mr-2 mt-1">•</span>
-                    <span>Create a <strong>PowerPoint presentation</strong> about yourself and a challenging experience from high school</span>
+                    <span>You will create and present a <strong>PowerPoint presentation</strong></span>
                   </li>
                   <li className="flex items-start">
                     <span className="text-[#592538] mr-2 mt-1">•</span>
@@ -616,6 +616,39 @@ const PresentationAssessmentNew = () => {
                         id="video-upload"
                         accept="video/*"
                         onChange={handleVideoChange}
+                        className="hidden"
+                      />
+                      
+                      <button
+                        onClick={() => document.getElementById('video-upload').click()}
+                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition duration-300"
+                      >
+                        Select Video File
+                      </button>
+                      
+                      {videoFile && (
+                        <div className="mt-4 flex items-center space-x-2 text-green-600">
+                          <FaCheck />
+                          <span>{videoFile.name}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Presentation Upload */}
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                    <div className="flex flex-col items-center justify-center">
+                      <FaFileUpload className="h-12 w-12 text-gray-400 mb-3" />
+                      <h3 className="text-lg font-medium text-gray-900">Presentation File</h3>
+                      <p className="text-sm text-gray-500 mb-4 text-center">
+                        Upload your PowerPoint or PDF presentation file
+                      </p>
+                      
+                      <input
+                        type="file"
+                        id="presentation-upload"
+                        accept=".pdf,.ppt,.pptx,application/pdf,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                        onChange={handlePresentationChange}
                         className="hidden"
                       />
                       
