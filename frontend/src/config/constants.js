@@ -1,7 +1,7 @@
 // Global constants for the application
 
 // API URL configuration - prioritize environment variable, then fallback to defaults
-export const API_URL = import.meta.env.VITE_API_URL || window.location.origin + '/api' || 'http://localhost:5003/api';
+export const API_URL = import.meta.env.VITE_API_URL || window.location.origin + '/api' || 'http://localhost:5000/api';
 
 // Assessment types
 export const ASSESSMENT_TYPES = {

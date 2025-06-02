@@ -1,7 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import User from '../models/user.js';
+import User from '../models/User.js';
 import Supervisor from '../models/supervisor.model.js';
 import { sendConfirmationEmail } from '../services/emailService.js';
 import { sendPasswordResetEmail } from '../services/emailService.js';
@@ -523,7 +523,7 @@ router.post('/supervisor/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { userId: supervisor._id, role: 'supervisor' },
+      { userId: supervisor._id, role: 'supervisor', email: supervisor.Email },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '24h' }
     );

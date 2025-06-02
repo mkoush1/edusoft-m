@@ -7,10 +7,13 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
   const [puzzle, setPuzzle] = useState(initialPuzzle);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [timer, setTimer] = useState(240); // 4 minutes in seconds
+  const [timer, setTimer] = useState(
+    initialPuzzle && typeof initialPuzzle.timeSpent === 'number'
+      ? 240 - initialPuzzle.timeSpent
+      : 240
+  );
   const [timerInterval, setTimerInterval] = useState(null);
   const [validMoves, setValidMoves] = useState([]);
-  const TIME_LIMIT = 4 * 60; // 4 minutes in seconds
   const [isPaused, setIsPaused] = useState(false);
   const [savedState, setSavedState] = useState(null);
   const [isTimeUp, setIsTimeUp] = useState(false);
@@ -18,19 +21,15 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
   const [scoreMessage, setScoreMessage] = useState('');
 
   useEffect(() => {
-    startTimer();
+    // Use the correct initial value based on timeSpent
+    const initialTime = initialPuzzle && typeof initialPuzzle.timeSpent === 'number'
+      ? 240 - initialPuzzle.timeSpent
+      : 240;
+    startTimer(initialTime);
     return () => {
       if (timerInterval) clearInterval(timerInterval);
     };
   }, []);
-
-  // Check time limit
-  useEffect(() => {
-    if (timer >= TIME_LIMIT && !puzzle?.isCompleted) {
-      clearInterval(timerInterval);
-      submitAssessment(puzzle);
-    }
-  }, [timer, puzzle]);
 
   // Check if time is up
   useEffect(() => {
@@ -86,9 +85,9 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
     });
   };
 
-  const startTimer = () => {
+  const startTimer = (initial = timer) => {
     if (timerInterval) clearInterval(timerInterval);
-    setTimer(240); // Reset to 4 minutes
+    setTimer(initial);
     const interval = setInterval(() => {
       if (!isPaused) {
         setTimer(prev => {
@@ -141,19 +140,38 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
     setValidMoves(newValidMoves);
   }, [puzzle]);
 
+  const saveTimeSpent = async (timeSpent) => {
+    console.log('DEBUG: Saving timeSpent to backend:', timeSpent);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(
+        `http://localhost:5000/api/puzzle/${puzzle._id}/time`,
+        { timeSpent },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    } catch (err) {
+      console.error('Failed to save timeSpent:', err);
+    }
+  };
+
   const togglePause = () => {
     if (isPaused) {
-      // Resume game
       setIsPaused(false);
       setSavedState(null);
     } else {
-      // Pause game
       setIsPaused(true);
       setSavedState({
         currentState: puzzle.currentState,
         moves: puzzle.moves,
         time: timer
       });
+      // Save time spent to backend
+      saveTimeSpent(240 - timer);
     }
   };
 
@@ -243,17 +261,13 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
           localStorage.setItem('userData', JSON.stringify(userData));
         }
 
-        // Update puzzle state with score and rating
+        // Show success message
+        setError(null);
         setPuzzle(prev => ({
           ...prev,
           isCompleted: true,
-          score: response.data.result.score,
-          rating: response.data.result.rating,
-          completionTime: response.data.result.completionTime
+          showWinMessage: true
         }));
-
-        // Show success message
-        setError(null);
       } else {
         setError('Failed to submit assessment');
       }
@@ -307,6 +321,16 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [handleKeyDown]);
+
+  // Save timeSpent on unmount
+  useEffect(() => {
+    return () => {
+      if (!puzzle?.isCompleted && !isTimeUp) {
+        saveTimeSpent(240 - timer);
+      }
+    };
+    // eslint-disable-next-line
+  }, []);
 
   if (loading) {
     return (
@@ -418,12 +442,6 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
               'text-orange-600'
             }`}>
               {scoreMessage}
-            </p>
-            <p className="text-gray-600 mb-4">
-              Rating: {puzzle.rating || 'Calculating...'}
-            </p>
-            <p className="text-gray-600 mb-4">
-              Completion Time: {puzzle.completionTime || (timer / 60).toFixed(2)} minutes
             </p>
             <div className="flex justify-center space-x-4">
               <button

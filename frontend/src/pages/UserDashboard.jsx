@@ -175,17 +175,6 @@ const UserDashboard = () => {
           )}
         </div>
       </div>
-
-      {/* Test Page Link */}
-      <div className="mt-8 bg-white rounded-xl shadow-md p-6">
-        <h2 className="text-2xl font-bold text-[#592538] mb-6">Test Pages</h2>
-        <button
-          onClick={() => navigate("/presentation-fetch")}
-          className="px-6 py-3 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300"
-        >
-          Test Presentation Videos
-        </button>
-      </div>
     </DashboardLayout>
   );
 };

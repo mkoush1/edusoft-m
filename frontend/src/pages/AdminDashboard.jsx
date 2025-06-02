@@ -98,23 +98,6 @@ const AdminDashboard = () => {
             Manage Assessments
           </button>
         </div>
-        
-        {/* Presentation Assessment Management */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Presentation Assessment</h2>
-          <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded">
-              <h3 className="text-lg font-medium">Evaluate Student Videos</h3>
-              <p className="text-gray-600 text-sm mt-1">Review and score student presentation videos</p>
-            </div>
-            <button
-              onClick={() => navigate('/admin/presentation-management')}
-              className="w-full bg-[#592538] text-white py-2 px-4 rounded hover:bg-[#6d2c44]"
-            >
-              Manage Presentations
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

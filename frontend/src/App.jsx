@@ -33,6 +33,7 @@ import PresentationAssessment from "./pages/PresentationAssessment";
 import PresentationRecommendations from "./pages/PresentationRecommendations";
 import PresentationFetch from "./pages/PresentationFetch";
 import PresentationQuestions from "./pages/PresentationQuestions";
+import PresentationAssessmentNew from "./pages/PresentationAssessmentNew";
 import AssessmentInstructionsLeadership from "./pages/AssessmentInstructions_leadership";
 import AssessmentInstructionsFast from "./pages/AssessmentInstructions_fast";
 import AssessmentQuizFast from "./pages/AssessmentQuiz_fast";
@@ -62,6 +63,7 @@ const App = () => {
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/assessments" element={<AssessmentManagement />} />
         <Route path="/admin/presentation-management" element={<PresentationManagement />} />
+        <Route path="/presentation-management" element={<PresentationManagement />} />
         
         {/* Assessment specific routes */}
         <Route path="/assessment/problem-solving" element={<ProblemSolvingAssessment />} />
@@ -85,7 +87,7 @@ const App = () => {
         <Route path="/progress" element={<ProgressPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/confirm-email/:token" element={<ConfirmEmail />} />
-        <Route path="/presentation-assessment" element={<PresentationAssessment />} />
+        <Route path="/presentation-assessment" element={<PresentationAssessmentNew />} />
         <Route path="/presentation-recommendations" element={<PresentationRecommendations />} />
         <Route path="/presentation-fetch" element={<PresentationFetch />} />
         <Route path="/presentation-questions" element={<PresentationQuestions />} />

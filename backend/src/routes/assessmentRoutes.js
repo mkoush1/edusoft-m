@@ -655,8 +655,28 @@ router.post('/start/puzzle-game', authenticateToken, async (req, res) => {
     console.log('Assessment saved successfully');
 
     // Generate initial puzzle state
-    const initialState = generatePuzzle(3);
-    console.log('Generated initial puzzle state:', initialState);
+    let initialState = generatePuzzle(3);
+
+    // Helper to check if puzzle is solved
+    const isSolved = (grid) => {
+      const size = grid.length;
+      let expected = 1;
+      for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+          if (i === size - 1 && j === size - 1) {
+            if (grid[i][j] !== 0) return false;
+          } else {
+            if (grid[i][j] !== expected++) return false;
+          }
+        }
+      }
+      return true;
+    };
+
+    // Ensure the puzzle is not already solved
+    while (isSolved(initialState)) {
+      initialState = generatePuzzle(3);
+    }
 
     // Start a new puzzle game
     const puzzle = new Puzzle({

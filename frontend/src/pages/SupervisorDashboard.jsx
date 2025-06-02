@@ -6,6 +6,7 @@ const SupervisorDashboard = () => {
   const navigate = useNavigate();
   const [supervisorData, setSupervisorData] = useState(null);
   const [pendingAssessments, setPendingAssessments] = useState(0);
+  const [pendingPresentationCount, setPendingPresentationCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -45,6 +46,7 @@ const SupervisorDashboard = () => {
     
     // Fetch pending speaking assessments count
     fetchPendingAssessments();
+    fetchPendingPresentationAssessments();
   }, [navigate]);
   
   const fetchPendingAssessments = async () => {
@@ -68,6 +70,17 @@ const SupervisorDashboard = () => {
       setError('Error loading data from server');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPendingPresentationAssessments = async () => {
+    try {
+      const response = await axios.get('/api/assessments/presentation/pending');
+      if (response.data.success) {
+        setPendingPresentationCount(response.data.assessments.length);
+      }
+    } catch (error) {
+      // handle error if needed
     }
   };
 
@@ -178,6 +191,31 @@ const SupervisorDashboard = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-indigo-600 text-sm">View assessments</span>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </Link>
+              {/* Presentation Assessments Card */}
+              <Link
+                to="/presentation-management"
+                className="bg-white p-6 rounded-lg border border-gray-200 shadow-md hover:shadow-lg transition-shadow"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-purple-700">Presentation Assessments</h3>
+                  {pendingPresentationCount > 0 ? (
+                    <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                      {pendingPresentationCount} pending
+                    </span>
+                  ) : (
+                    <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                      No pending
+                    </span>
+                  )}
+                </div>
+                <p className="text-gray-600 mb-4">Review and evaluate student presentation submissions</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-purple-600 text-sm">View assessments</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </div>

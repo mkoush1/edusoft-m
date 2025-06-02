@@ -3,7 +3,7 @@ import axios from 'axios';
 // Try to use environment variables first, then fallback to origin or localhost
 const API_URL = import.meta.env.VITE_API_URL || 
                 window.location.origin + '/api' || 
-                'http://localhost:5003/api';
+                'http://localhost:5000/api';
 
 // Log the API URL for debugging
 console.log("WritingAssessmentService using API URL:", API_URL);
