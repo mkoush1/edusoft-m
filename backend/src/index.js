@@ -16,9 +16,11 @@ import cloudinaryRoutes from './routes/cloudinaryRoutes.js';
 import readingAssessmentRoutes from './routes/readingAssessmentRoutes.js';
 import communicationRoutes from './routes/communicationRoutes.js';
 import leetcodeAssessmentRoutes from './routes/leetcodeAssessment.routes.js';
+import supervisorRoutes from '../routes/supervisor.route.js';
 
 // Load environment variables
 dotenv.config();
+console.log('JWT_SECRET:', process.env.JWT_SECRET); // Debug log to verify .env loading
 
 // Verify MongoDB URI
 console.log('MongoDB URI:', process.env.MONGODB_URI ? 'Found' : 'Not Found');
@@ -68,6 +70,7 @@ app.use('/api/reading-assessment', readingAssessmentRoutes);
 app.use('/api/cloudinary', cloudinaryRoutes);
 app.use('/api/communication', communicationRoutes);
 app.use('/api/assessments/leetcode', leetcodeAssessmentRoutes);
+app.use('/api/supervisors', supervisorRoutes);
 
 // Connect to MongoDB
 const connectDB = async () => {

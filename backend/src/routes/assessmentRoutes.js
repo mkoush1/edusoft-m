@@ -3,8 +3,13 @@ import Assessment from '../models/Assessment.js';
 import TestQuestion from '../models/TestQuestion.js';
 import LeadershipQuestion from '../models/leadership_testBank.js';
 import AssessmentResult from '../models/AssessmentResult.js';
+<<<<<<< HEAD
 import { authenticateToken } from '../middleware/auth.js';
 import User from '../models/User.js';
+=======
+import { authenticateToken, isAdmin } from '../middleware/auth.js';
+import User from '../models/user.js';
+>>>>>>> d6aa83a42a026c835a51ca604378dc3ae7ae9761
 import ProblemSolvingAssessment from '../models/ProblemSolvingAssessment.js';
 import ProblemSolvingQuestion from '../models/problemSolvingQuestionBank.js';
 import Puzzle from '../models/Puzzle.js';
@@ -1184,6 +1189,62 @@ router.post('/submit/fast-questions', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Error submitting fast questions', error: error.message });
+  }
+});
+
+// Update an assessment (admin only)
+router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { title, description, duration, isActive, image, category } = req.body;
+    const updateFields = { updatedAt: Date.now() };
+    if (title !== undefined) updateFields.title = title;
+    if (description !== undefined) updateFields.description = description;
+    if (duration !== undefined) updateFields.duration = duration;
+    if (isActive !== undefined) updateFields.isActive = isActive;
+    if (image !== undefined) updateFields.image = image;
+    if (category !== undefined) updateFields.category = category;
+
+    const updatedAssessment = await Assessment.findByIdAndUpdate(
+      req.params.id,
+      updateFields,
+      { new: true, runValidators: true }
+    );
+    if (!updatedAssessment) {
+      return res.status(404).json({ success: false, message: 'Assessment not found' });
+    }
+    res.json({
+      success: true,
+      message: 'Assessment updated successfully',
+      data: updatedAssessment
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error updating assessment', error: error.message });
+  }
+});
+
+// Create a new assessment (admin only)
+router.post('/', authenticateToken, isAdmin, async (req, res) => {
+  // Debug: Log the Authorization header and user info
+  console.log('Authorization header:', req.headers['authorization']);
+  console.log('Decoded user:', req.user);
+  console.log('Is admin:', req.user && req.user.role === 'admin');
+  try {
+    const { title, description, category, duration, image } = req.body;
+    const newAssessment = new Assessment({
+      title,
+      description,
+      category,
+      duration,
+      image,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      isActive: true
+    });
+    await newAssessment.save();
+    res.status(201).json(newAssessment);
+  } catch (err) {
+    console.error('Error creating assessment:', err);
+    res.status(500).json({ message: 'Failed to create assessment' });
   }
 });
 

@@ -10,6 +10,7 @@ export const authenticateToken = async (req, res, next) => {
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
+      console.log('No token provided');
       return res.status(401).json({ message: 'No token provided' });
     }
 
@@ -36,8 +37,10 @@ export const authenticateToken = async (req, res, next) => {
     req.user = user;
     req.userId = user._id;
     req.userRole = decoded.role;
+    console.log('Token decoded successfully:', decoded);
     next();
   } catch (error) {
+    console.log('Token verification failed:', error.message);
     if (error.name === 'JsonWebTokenError') {
       return res.status(403).json({ message: 'Invalid token' });
     }
@@ -72,6 +75,7 @@ export const isAdmin = async (req, res, next) => {
     
     // Attach admin info to request
     req.admin = admin;
+    console.log('Checking admin role for user:', user);
     next();
   } catch (error) {
     console.error('Admin check error:', error);

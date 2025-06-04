@@ -47,7 +47,12 @@ import LeetCodeAssessment from "./pages/LeetCodeAssessment";
 import CommunicationAssessment from "./pages/CommunicationAssessment";
 import LanguageAssessment from "./pages/LanguageAssessment";
 import SpeakingAssessmentReview from "./components/supervisor/SpeakingAssessmentReview";
+<<<<<<< HEAD
 >>>>>>> 3328bcaf3f07c42ce630b410ab8f35686946120f
+=======
+import AdminUsers from "./pages/AdminUsers";
+import AdminSupervisors from './pages/AdminSupervisors';
+>>>>>>> d6aa83a42a026c835a51ca604378dc3ae7ae9761
 
 const App = () => {
   return (
@@ -68,6 +73,8 @@ const App = () => {
         <Route path="/admin/assessments" element={<AssessmentManagement />} />
         <Route path="/admin/presentation-management" element={<PresentationManagement />} />
         <Route path="/presentation-management" element={<PresentationManagement />} />
+        <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/supervisors" element={<AdminSupervisors />} />
         
         {/* Assessment specific routes */}
         <Route path="/assessment/problem-solving" element={<ProblemSolvingAssessment />} />

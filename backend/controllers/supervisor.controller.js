@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import Supervisor from "../models/supervisor.model.js";
+import Supervisor from '../src/models/supervisor.model.js';
 
 export const createSupervisor = async (req, res) => {
   try {

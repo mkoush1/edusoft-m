@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const AssessmentManagement = () => {
   const [assessments, setAssessments] = useState([]);
@@ -11,6 +12,7 @@ const AssessmentManagement = () => {
   });
   const [selectedAssessment, setSelectedAssessment] = useState(null);
   const [editing, setEditing] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadAssessments();
@@ -141,7 +143,15 @@ const AssessmentManagement = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Assessment Management</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Assessment Management</h1>
+        <button
+          onClick={() => navigate('/admin/dashboard')}
+          className="px-4 py-2 bg-gray-100 text-[#592538] rounded-lg hover:bg-gray-200 transition duration-300"
+        >
+          Back to Dashboard
+        </button>
+      </div>
 
       {/* Create New Assessment Form */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
@@ -226,6 +236,64 @@ const AssessmentManagement = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Assessment Modal */}
+      {editing && selectedAssessment && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
+          <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
+            <h2 className="text-xl font-semibold mb-4">Edit Assessment</h2>
+            <label className="block mb-2">Title</label>
+            <input
+              type="text"
+              value={selectedAssessment.title}
+              onChange={e => setSelectedAssessment({ ...selectedAssessment, title: e.target.value })}
+              className="w-full border px-3 py-2 mb-4 rounded"
+            />
+            <label className="block mb-2">Type</label>
+            <select
+              value={selectedAssessment.category}
+              onChange={e => setSelectedAssessment({ ...selectedAssessment, category: e.target.value })}
+              className="w-full border px-3 py-2 mb-4 rounded"
+            >
+              <option value="">Select Assessment Type</option>
+              <option value="leadership">Leadership</option>
+              <option value="problem-solving">Problem Solving</option>
+              <option value="presentation">Presentation</option>
+              <option value="teamwork">Team Work</option>
+              <option value="adaptability">Adaptability and Flexibility</option>
+              <option value="communication">Communication</option>
+            </select>
+            <label className="block mb-2">Description</label>
+            <textarea
+              value={selectedAssessment.description}
+              onChange={e => setSelectedAssessment({ ...selectedAssessment, description: e.target.value })}
+              className="w-full border px-3 py-2 mb-4 rounded"
+              rows={3}
+            />
+            <label className="block mb-2">Duration (minutes)</label>
+            <input
+              type="number"
+              value={selectedAssessment.duration}
+              onChange={e => setSelectedAssessment({ ...selectedAssessment, duration: Number(e.target.value) })}
+              className="w-full border px-3 py-2 mb-4 rounded"
+            />
+            <div className="flex justify-end space-x-2">
+              <button
+                className="bg-gray-300 px-4 py-2 rounded"
+                onClick={() => { setEditing(false); setSelectedAssessment(null); }}
+              >
+                Cancel
+              </button>
+              <button
+                className="bg-blue-600 text-white px-4 py-2 rounded"
+                onClick={handleUpdate}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

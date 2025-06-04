@@ -82,10 +82,12 @@ router.get('/', async (req, res) => {
 // Get assessment by ID (public)
 router.get('/:id', async (req, res) => {
   try {
+    console.log('GET /api/assessments/:id called with id:', req.params.id);
     const assessment = await Assessment.findById(req.params.id)
       .select('-__v -createdAt -updatedAt');
     
     if (!assessment) {
+      console.log('Assessment not found for id:', req.params.id);
       return res.status(404).json({ 
         success: false, 
         message: 'Assessment not found' 
@@ -378,18 +380,21 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
 // Update an assessment (admin only)
 router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
   try {
-    const { title, description, duration, isActive, image } = req.body;
+    console.log('PUT /api/assessments/:id called with id:', req.params.id);
+    const { title, description, duration, isActive, image, category } = req.body;
     
+    // Build update object dynamically to avoid overwriting fields with undefined
+    const updateFields = { updatedAt: Date.now() };
+    if (title !== undefined) updateFields.title = title;
+    if (description !== undefined) updateFields.description = description;
+    if (duration !== undefined) updateFields.duration = duration;
+    if (isActive !== undefined) updateFields.isActive = isActive;
+    if (image !== undefined) updateFields.image = image;
+    if (category !== undefined) updateFields.category = category;
+
     const updatedAssessment = await Assessment.findByIdAndUpdate(
       req.params.id,
-      { 
-        title,
-        description,
-        duration,
-        isActive,
-        image,
-        updatedAt: Date.now()
-      },
+      updateFields,
       { new: true, runValidators: true }
     );
     
