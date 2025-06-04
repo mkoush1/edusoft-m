@@ -41,7 +41,13 @@ import PuzzleInstructions from "./components/PuzzleInstructions";
 import AssessmentInstructionsAdaptability from "./pages/AssessmentInstructions_adaptability";
 import AssessmentQuizAdaptability from "./pages/AssessmentQuiz_adaptability";
 import Recommendations from "./pages/Recommendations";
+<<<<<<< HEAD
 import LeetCodeAssessment from "./pages/LeetCodeAssessment";
+=======
+import CommunicationAssessment from "./pages/CommunicationAssessment";
+import LanguageAssessment from "./pages/LanguageAssessment";
+import SpeakingAssessmentReview from "./components/supervisor/SpeakingAssessmentReview";
+>>>>>>> 3328bcaf3f07c42ce630b410ab8f35686946120f
 
 const App = () => {
   return (
@@ -55,11 +61,13 @@ const App = () => {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/user-dashboard" element={<UserDashboard />} />
         <Route path="/supervisor-dashboard" element={<SupervisorDashboard />} />
+        <Route path="/supervisor/speaking-review" element={<SpeakingAssessmentReview />} />
         <Route path="/dashboard" element={<UserDashboard />} />
         {/* Admin routes */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/assessments" element={<AssessmentManagement />} />
         <Route path="/admin/presentation-management" element={<PresentationManagement />} />
+        <Route path="/presentation-management" element={<PresentationManagement />} />
         
         {/* Assessment specific routes */}
         <Route path="/assessment/problem-solving" element={<ProblemSolvingAssessment />} />
@@ -78,6 +86,8 @@ const App = () => {
         <Route path="/about" element={<AboutUs />} />
         <Route path="/features" element={<Features />} />
         <Route path="/assessments" element={<AssessmentsPage />} />
+        <Route path="/communication-assessment" element={<CommunicationAssessment />} />
+        <Route path="/language-assessment" element={<LanguageAssessment />} />
         <Route path="/progress" element={<ProgressPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/confirm-email/:token" element={<ConfirmEmail />} />

@@ -531,49 +531,52 @@ router.get('/results/completed', authenticateToken, async (req, res) => {
 // Get user's assessment status
 router.get('/status/:userId', authenticateToken, async (req, res) => {
   try {
-    const userId = req.params.userId;
-    console.log('Getting assessment status for user:', userId);
-
-    // Get all available assessments
-    const availableAssessments = await Assessment.find();
-    console.log('Available assessments:', availableAssessments.length);
-
-    // Get user's completed assessments
+    const { userId } = req.params;
+    
+    // Verify the user exists
     const user = await User.findById(userId);
     if (!user) {
-      console.error('User not found:', userId);
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
+      return res.status(404).json({ message: 'User not found' });
     }
-    console.log('User found:', user._id);
-    console.log('Completed assessments:', user.completedAssessments);
-
-    const completedAssessmentTypes = user.completedAssessments.map(a => a.assessmentType);
-    console.log('Completed assessment types:', completedAssessmentTypes);
-
-    // Filter out completed assessments
-    const remainingAssessments = availableAssessments.filter(
-      assessment => !completedAssessmentTypes.includes(assessment.category)
-    );
-    console.log('Remaining assessments:', remainingAssessments.length);
-
+    
+    // Get all available assessments
+    const availableAssessments = await Assessment.find({});
+    const totalAvailable = availableAssessments.length;
+    
+    // Get completed assessments for the user
+    const completedResults = await AssessmentResult.find({ userId });
+    const completedAssessmentTypes = completedResults.map(result => result.assessmentType);
+    
+    // Mark assessments as completed or not
+    const assessments = availableAssessments.map(assessment => ({
+      ...assessment.toObject(),
+      isCompleted: completedAssessmentTypes.includes(assessment.category),
+      score: completedResults.find(r => r.assessmentType === assessment.category)?.percentage || 0,
+      completedAt: completedResults.find(r => r.assessmentType === assessment.category)?.completedAt
+    }));
+    
+    // Calculate progress
+    const totalCompleted = completedAssessmentTypes.length;
+    const progress = totalAvailable > 0 ? (totalCompleted / totalAvailable) * 100 : 0;
+    
     res.json({
       success: true,
       data: {
-        availableAssessments: remainingAssessments,
-        completedAssessments: user.completedAssessments,
-        totalAvailable: remainingAssessments.length,
-        totalCompleted: user.totalAssessmentsCompleted,
-        progress: user.progress
+        assessments,
+        totalAvailable,
+        totalCompleted,
+        completed: completedAssessmentTypes,
+        progress,
+        availableAssessments: assessments.filter(a => !a.isCompleted),
+        completedAssessments: user.completedAssessments || []
       }
     });
   } catch (error) {
-    console.error('Error getting assessment status:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get assessment status'
+    console.error('Error fetching assessment status:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching assessment status', 
+      error: error.message 
     });
   }
 });
@@ -652,8 +655,28 @@ router.post('/start/puzzle-game', authenticateToken, async (req, res) => {
     console.log('Assessment saved successfully');
 
     // Generate initial puzzle state
-    const initialState = generatePuzzle(3);
-    console.log('Generated initial puzzle state:', initialState);
+    let initialState = generatePuzzle(3);
+
+    // Helper to check if puzzle is solved
+    const isSolved = (grid) => {
+      const size = grid.length;
+      let expected = 1;
+      for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+          if (i === size - 1 && j === size - 1) {
+            if (grid[i][j] !== 0) return false;
+          } else {
+            if (grid[i][j] !== expected++) return false;
+          }
+        }
+      }
+      return true;
+    };
+
+    // Ensure the puzzle is not already solved
+    while (isSolved(initialState)) {
+      initialState = generatePuzzle(3);
+    }
 
     // Start a new puzzle game
     const puzzle = new Puzzle({
@@ -718,6 +741,7 @@ router.post('/submit/puzzle-game', authenticateToken, async (req, res) => {
     let totalMoves = 0;
     let totalTime = 0;
     let completedPuzzles = 0;
+    let rating = '';
 
     puzzleData.forEach(puzzle => {
       if (puzzle.completed) {
@@ -727,39 +751,28 @@ router.post('/submit/puzzle-game', authenticateToken, async (req, res) => {
       }
     });
 
-    // Calculate score based on completion rate and efficiency
-    const completionRate = completedPuzzles / puzzleData.length;
-    const averageMoves = totalMoves / completedPuzzles;
-    const averageTime = totalTime / completedPuzzles;
+    // Calculate score based on completion time
+    const completionTime = totalTime / 60; // Convert to minutes
+    if (completionTime <= 1) {
+      totalScore = 100;
+      rating = 'Excellent';
+    } else if (completionTime <= 2) {
+      totalScore = 85;
+      rating = 'Very Good';
+    } else if (completionTime <= 3) {
+      totalScore = 70;
+      rating = 'Good';
+    } else if (completionTime <= 4) {
+      totalScore = 50;
+      rating = 'Fair';
+    } else {
+      totalScore = 30;
+      rating = 'Poor';
+    }
 
-    // Base score on completion rate (70%) and efficiency (30%)
-    totalScore = Math.round(
-      (completionRate * 70) +
-      ((1 - (averageMoves / 100)) * 15) + // Moves efficiency
-      ((1 - (averageTime / 300)) * 15)    // Time efficiency
-    );
-
-    // Ensure score is within bounds
-    totalScore = Math.max(0, Math.min(100, totalScore));
-
-    // Create new assessment result
-    const assessmentResult = new AssessmentResult({
-      userId,
-      assessmentType: 'puzzle-game',
-      score: totalScore,
-      maxScore,
-      completedAt: new Date(),
-      details: {
-        completedPuzzles,
-        totalPuzzles: puzzleData.length,
-        totalMoves,
-        totalTime,
-        averageMoves,
-        averageTime
-      }
-    });
-
-    await assessmentResult.save();
+    // Adjust score based on moves efficiency
+    const movesPenalty = Math.min(20, Math.floor(totalMoves / 10));
+    totalScore = Math.max(0, totalScore - movesPenalty);
 
     // Update user's assessment status
     const user = await User.findById(userId);
@@ -781,14 +794,16 @@ router.post('/submit/puzzle-game', authenticateToken, async (req, res) => {
       user.completedAssessments[existingAssessmentIndex] = {
         assessmentType: 'puzzle-game',
         completedAt: new Date(),
-        score: totalScore
+        score: totalScore,
+        rating: rating
       };
     } else {
       // Add new completion
       user.completedAssessments.push({
         assessmentType: 'puzzle-game',
         completedAt: new Date(),
-        score: totalScore
+        score: totalScore,
+        rating: rating
       });
       user.totalAssessmentsCompleted += 1;
     }
@@ -798,6 +813,26 @@ router.post('/submit/puzzle-game', authenticateToken, async (req, res) => {
     user.progress = Math.min(100, (user.totalAssessmentsCompleted / totalAssessments) * 100);
 
     await user.save();
+
+    // Create new assessment result
+    const assessmentResult = new AssessmentResult({
+      userId,
+      assessmentType: 'puzzle-game',
+      score: totalScore,
+      maxScore,
+      completedAt: new Date(),
+      rating: rating,
+      details: {
+        completedPuzzles,
+        totalPuzzles: puzzleData.length,
+        totalMoves,
+        totalTime,
+        completionTime: completionTime.toFixed(2),
+        rating: rating
+      }
+    });
+
+    await assessmentResult.save();
 
     // Update the assessment status to completed
     await ProblemSolvingAssessment.findOneAndUpdate(
@@ -822,8 +857,8 @@ router.post('/submit/puzzle-game', authenticateToken, async (req, res) => {
         totalPuzzles: puzzleData.length,
         totalMoves,
         totalTime,
-        averageMoves,
-        averageTime,
+        completionTime: completionTime.toFixed(2),
+        rating: rating,
         assessmentStatus: {
           availableAssessments: remainingAssessments,
           completedAssessments: user.completedAssessments,

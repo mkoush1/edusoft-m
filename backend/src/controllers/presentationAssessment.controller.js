@@ -126,12 +126,12 @@ export const getVideos = async (req, res) => {
         console.log('Fetching presentation videos');
         
         // First, get all users to ensure we can access them
-        const allUsers = await User.find({}).select('_id username').lean();
+        const allUsers = await User.find({}).select('_id name email').lean();
         console.log('All users in database:', JSON.stringify(allUsers, null, 2));
         
-        // Create a map of user IDs to usernames
+        // Create a map of user IDs to display names
         const userMap = allUsers.reduce((map, user) => {
-            map[user._id.toString()] = user.username;
+            map[user._id.toString()] = user.name || user.email || `User ${user._id.toString().slice(-6)}`;
             return map;
         }, {});
         
@@ -170,28 +170,38 @@ export const getVideos = async (req, res) => {
         }));
         
         // Format the response with correct video and presentation file paths
-        const videos = enrichedSubmissions.map(submission => ({
-            _id: submission._id,
-            userId: submission.userId,
-            username: submission.username || null, // Will be null if not found
-            questionId: submission.questionId,
-            videoUrl: submission.screenRecording?.url || null,
-            thumbnailUrl: submission.screenRecording?.thumbnailUrl || null,
-            presentationFile: submission.presentationFile ? {
-                fileId: submission.presentationFile.fileId,
-                name: submission.presentationFile.name,
-                downloadLink: submission.presentationFile.downloadLink,
-                webViewLink: submission.presentationFile.webViewLink
-            } : null,
-            cloudinaryId: submission.cloudinaryId,
-            submittedAt: submission.submittedAt || submission.createdAt,
-            score: submission.score || null,
-            feedback: submission.feedback || '',
-            criteriaScores: submission.criteriaScores || null,
-            reviewedAt: submission.reviewedAt || null,
-            status: submission.score ? 'evaluated' : 'pending',
-            createdAt: submission.createdAt || submission.submittedAt || new Date()
-        }));
+        const videos = enrichedSubmissions
+            .filter(submission => submission.status !== 'evaluated')
+            .map(submission => {
+                let thumbnailUrl = submission.screenRecording?.thumbnailUrl || submission.screenRecording?.url || null;
+                if (thumbnailUrl && thumbnailUrl.includes('/c_thumb,w_200,g_face/')) {
+                    thumbnailUrl = submission.screenRecording?.url || null;
+                }
+                // Optionally, set a fallback image if you want a default thumbnail
+                // if (!thumbnailUrl) thumbnailUrl = '/default-thumbnail.png';
+                return {
+                    _id: submission._id,
+                    userId: submission.userId,
+                    username: submission.username || null, // Will be null if not found
+                    questionId: submission.questionId,
+                    videoUrl: submission.screenRecording?.url || null,
+                    thumbnailUrl: thumbnailUrl,
+                    presentationFile: submission.presentationFile ? {
+                        fileId: submission.presentationFile.fileId,
+                        name: submission.presentationFile.name,
+                        downloadLink: submission.presentationFile.downloadLink,
+                        webViewLink: submission.presentationFile.webViewLink
+                    } : null,
+                    cloudinaryId: submission.cloudinaryId,
+                    submittedAt: submission.submittedAt || submission.createdAt,
+                    score: submission.score || null,
+                    feedback: submission.feedback || '',
+                    criteriaScores: submission.criteriaScores || null,
+                    reviewedAt: submission.reviewedAt || null,
+                    status: submission.score ? 'evaluated' : 'pending',
+                    createdAt: submission.createdAt || submission.submittedAt || new Date()
+                };
+            });
         
         console.log('Sending response with videos:', JSON.stringify(videos, null, 2));
         
@@ -420,30 +430,30 @@ export const evaluateVideo = async (req, res) => {
         const user = await User.findById(submission.userId);
         
         if (user) {
-            // Update the user's presentation assessment score in completedAssessments
-            const presentationAssessment = user.completedAssessments.find(
+            // Check if this type is already completed
+            const alreadyCompleted = user.completedAssessments.some(
                 a => a.assessmentType === 'presentation'
             );
-            
-            if (presentationAssessment) {
-                presentationAssessment.score = score;
-                await user.save();
-                console.log(`Updated user's presentation assessment score to ${score}`);
-            } else {
-                // If no existing assessment, add a new one
+
+            if (!alreadyCompleted) {
                 user.completedAssessments.push({
                     assessmentType: 'presentation',
                     completedAt: new Date(),
                     score: score
                 });
-                
-                // Update total assessments completed if needed
-                if (!user.completedAssessments.some(a => a.assessmentType === 'presentation')) {
-                    user.totalAssessmentsCompleted += 1;
-                }
-                
+                user.totalAssessmentsCompleted += 1;
                 await user.save();
                 console.log(`Added presentation assessment to user's completed assessments`);
+            } else {
+                // Update the score if already exists
+                const presentationAssessment = user.completedAssessments.find(
+                    a => a.assessmentType === 'presentation'
+                );
+                if (presentationAssessment) {
+                    presentationAssessment.score = score;
+                    await user.save();
+                    console.log(`Updated user's presentation assessment score to ${score}`);
+                }
             }
         }
         
@@ -843,4 +853,16 @@ export const evaluateSubmission = async (req, res) => {
             error: error.message
         });
     }
+};
+
+// Get all pending presentation assessments
+export const getPendingPresentationAssessments = async (req, res) => {
+  try {
+    const pending = await PresentationSubmission.find({
+      status: { $in: ['submitted', 'pending', 'under_review'] }
+    });
+    res.json({ success: true, assessments: pending });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error fetching pending presentation assessments', error: error.message });
+  }
 };

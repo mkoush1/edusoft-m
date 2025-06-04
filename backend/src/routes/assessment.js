@@ -1,9 +1,9 @@
 import express from 'express';
 import auth from '../middleware/auth.js';
-import Assessment from '../models/assessment.js';
-import AssessmentResult from '../models/assessmentResult.js';
-import TestQuestion from '../models/testQuestion.js';
-import User from '../models/user.js';
+import Assessment from '../models/Assessment.js';
+import AssessmentResult from '../models/AssessmentResult.js';
+import TestQuestion from '../models/TestQuestion.js';
+import User from '../models/User.js';
 
 const router = express.Router();
 

@@ -1,5 +1,5 @@
 import express from 'express';
-import { submitPresentation, getQuestions, checkCompletion, getVideos, deleteVideo, evaluateVideo, getUserSubmissions, getPresentationRecommendations, evaluateSubmission } from '../controllers/presentationAssessment.controller.js';
+import { submitPresentation, getQuestions, checkCompletion, getVideos, deleteVideo, evaluateVideo, getUserSubmissions, getPresentationRecommendations, evaluateSubmission, getPendingPresentationAssessments } from '../controllers/presentationAssessment.controller.js';
 import { authenticateToken, isAdmin } from '../middleware/auth.js';
 import fileUpload from 'express-fileupload';
 import PresentationSubmission from '../models/PresentationSubmission.js';
@@ -157,5 +157,8 @@ router.post('/upload-presentation', authenticateToken, (req, res) => {
         });
     }
 });
+
+// Get all pending presentation assessments
+router.get('/pending', getPendingPresentationAssessments);
 
 export default router; 

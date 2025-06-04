@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import mongoose from 'mongoose';
 import Admin from '../models/Admin.js';
+import Supervisor from '../models/supervisor.model.js';
 
 export const authenticateToken = async (req, res, next) => {
   try {
@@ -19,7 +20,14 @@ export const authenticateToken = async (req, res, next) => {
       new mongoose.Types.ObjectId(decoded.userId) : 
       decoded.userId;
 
-    const user = await User.findById(userId);
+    let user;
+    if (decoded.role === 'supervisor') {
+      user = await Supervisor.findById(userId);
+    } else if (decoded.role === 'admin') {
+      user = await Admin.findById(userId);
+    } else {
+      user = await User.findById(userId);
+    }
 
     if (!user) {
       return res.status(401).json({ message: 'User not found' });
@@ -27,6 +35,7 @@ export const authenticateToken = async (req, res, next) => {
 
     req.user = user;
     req.userId = user._id;
+    req.userRole = decoded.role;
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
