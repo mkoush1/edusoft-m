@@ -44,6 +44,8 @@ import Recommendations from "./pages/Recommendations";
 import CommunicationAssessment from "./pages/CommunicationAssessment";
 import LanguageAssessment from "./pages/LanguageAssessment";
 import SpeakingAssessmentReview from "./components/supervisor/SpeakingAssessmentReview";
+import AdminUsers from "./pages/AdminUsers";
+import AdminSupervisors from './pages/AdminSupervisors';
 
 const App = () => {
   return (
@@ -64,6 +66,8 @@ const App = () => {
         <Route path="/admin/assessments" element={<AssessmentManagement />} />
         <Route path="/admin/presentation-management" element={<PresentationManagement />} />
         <Route path="/presentation-management" element={<PresentationManagement />} />
+        <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/supervisors" element={<AdminSupervisors />} />
         
         {/* Assessment specific routes */}
         <Route path="/assessment/problem-solving" element={<ProblemSolvingAssessment />} />

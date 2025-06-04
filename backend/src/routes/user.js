@@ -1,6 +1,8 @@
 import express from 'express';
 import User from '../models/User.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { getAllStudents, deleteStudent, updateStudent } from '../controllers/supervisor.controller.js';
+import { sendStudentReport } from '../controllers/user.controller.js';
 
 const router = express.Router();
 
@@ -46,5 +48,10 @@ router.put('/profile', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Error updating profile', error: error.message });
   }
 });
+
+router.get('/students', getAllStudents);
+router.delete('/students/:id', deleteStudent);
+router.put('/students/:id', updateStudent);
+router.post('/students/:userId/report', sendStudentReport);
 
 export default router; 

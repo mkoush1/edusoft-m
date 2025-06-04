@@ -5,6 +5,7 @@ import axios from 'axios';
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [assessments, setAssessments] = useState([]);
+  const [supervisorsCount, setSupervisorsCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -15,11 +16,11 @@ const AdminDashboard = () => {
     }
 
     // Fetch users data
-    axios.get('/api/users', {
+    axios.get('/api/users/students', {
       headers: { Authorization: `Bearer ${token}` }
     })
     .then(response => {
-      setUsers(response.data);
+      setUsers(response.data.users);
     })
     .catch(error => {
       console.error('Error fetching users:', error);
@@ -34,6 +35,17 @@ const AdminDashboard = () => {
     })
     .catch(error => {
       console.error('Error fetching assessments:', error);
+    });
+
+    // Fetch supervisors count
+    axios.get('/api/supervisors', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    .then(response => {
+      setSupervisorsCount(response.data.data ? response.data.data.length : 0);
+    })
+    .catch(error => {
+      console.error('Error fetching supervisors:', error);
     });
   }, [navigate]);
 
@@ -88,15 +100,20 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Assessment Management */}
+        {/* Supervisor Management Section */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Assessment Management</h2>
-          <button
-            onClick={() => navigate('/admin/assessments')}
-            className="w-full bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700 mb-3"
-          >
-            Manage Assessments
-          </button>
+          <h2 className="text-xl font-semibold mb-4">Supervisor Management</h2>
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-4 rounded">
+              <h3 className="text-lg font-medium">Total Supervisors: {supervisorsCount}</h3>
+            </div>
+            <button
+              onClick={() => navigate('/admin/supervisors')}
+              className="w-full bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700 mb-3"
+            >
+              View All Supervisors
+            </button>
+          </div>
         </div>
       </div>
     </div>
