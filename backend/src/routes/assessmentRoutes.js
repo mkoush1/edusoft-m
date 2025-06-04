@@ -3,13 +3,10 @@ import Assessment from '../models/Assessment.js';
 import TestQuestion from '../models/TestQuestion.js';
 import LeadershipQuestion from '../models/leadership_testBank.js';
 import AssessmentResult from '../models/AssessmentResult.js';
-<<<<<<< HEAD
-import { authenticateToken } from '../middleware/auth.js';
-import User from '../models/User.js';
-=======
+
 import { authenticateToken, isAdmin } from '../middleware/auth.js';
-import User from '../models/user.js';
->>>>>>> d6aa83a42a026c835a51ca604378dc3ae7ae9761
+import User from '../models/User.js';
+
 import ProblemSolvingAssessment from '../models/ProblemSolvingAssessment.js';
 import ProblemSolvingQuestion from '../models/problemSolvingQuestionBank.js';
 import Puzzle from '../models/Puzzle.js';

@@ -41,18 +41,17 @@ import PuzzleInstructions from "./components/PuzzleInstructions";
 import AssessmentInstructionsAdaptability from "./pages/AssessmentInstructions_adaptability";
 import AssessmentQuizAdaptability from "./pages/AssessmentQuiz_adaptability";
 import Recommendations from "./pages/Recommendations";
-<<<<<<< HEAD
+
 import LeetCodeAssessment from "./pages/LeetCodeAssessment";
-=======
+
 import CommunicationAssessment from "./pages/CommunicationAssessment";
 import LanguageAssessment from "./pages/LanguageAssessment";
 import SpeakingAssessmentReview from "./components/supervisor/SpeakingAssessmentReview";
-<<<<<<< HEAD
->>>>>>> 3328bcaf3f07c42ce630b410ab8f35686946120f
-=======
+
+
 import AdminUsers from "./pages/AdminUsers";
 import AdminSupervisors from './pages/AdminSupervisors';
->>>>>>> d6aa83a42a026c835a51ca604378dc3ae7ae9761
+
 
 const App = () => {
   return (
