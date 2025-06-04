@@ -1,0 +1,405 @@
+import axios from 'axios';
+// Using the built-in Node.js crypto module
+import * as crypto from 'crypto';
+
+// LeetCode GraphQL API endpoint
+const LEETCODE_API_URL = 'https://leetcode.com/graphql';
+// LeetScan API endpoints
+const LEETSCAN_API_BASE = 'https://leetscan.vercel.app/api';
+
+/**
+ * Service to interact with LeetCode API
+ */
+class LeetCodeService {
+  /**
+   * Get user profile information
+   * @param {string} username - LeetCode username
+   * @returns {Promise<Object>} User profile data
+   */
+  async getUserProfile(username) {
+    try {
+      console.log(`Fetching LeetCode profile for ${username}...`);
+      
+      // First try using LeetScan API as it's more reliable
+      try {
+        const leetScanResponse = await axios.get(`${LEETSCAN_API_BASE}/user`, {
+          params: { username }
+        });
+        console.log('LeetScan API response:', leetScanResponse.data);
+        return leetScanResponse.data;
+      } catch (leetScanError) {
+        console.log('LeetScan API failed, falling back to LeetCode GraphQL API', leetScanError.message);
+      }
+      
+      // Fallback to LeetCode's GraphQL API
+      const query = `
+        query userPublicProfile($username: String!) {
+          matchedUser(username: $username) {
+            username
+            profile {
+              realName
+              aboutMe
+              userAvatar
+              ranking
+            }
+            submitStats {
+              acSubmissionNum {
+                difficulty
+                count
+                submissions
+              }
+            }
+          }
+        }
+      `;
+
+      const response = await axios.post(LEETCODE_API_URL, {
+        query,
+        variables: { username }
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Referer': 'https://leetcode.com',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      });
+
+      return response.data.data.matchedUser;
+    } catch (error) {
+      console.error('Error fetching LeetCode user profile:', error);
+      throw new Error('Failed to fetch LeetCode user profile');
+    }
+  }
+
+  /**
+   * Get user's recent submissions
+   * @param {string} username - LeetCode username
+   * @returns {Promise<Array>} Recent submissions
+   */
+  async getRecentSubmissions(username) {
+    try {
+      const query = `
+        query recentSubmissions($username: String!) {
+          recentSubmissionList(username: $username, limit: 20) {
+            id
+            title
+            titleSlug
+            status
+            statusDisplay
+            lang
+            timestamp
+            url
+            isPending
+            memory
+            runtime
+          }
+        }
+      `;
+
+      const response = await axios.post(LEETCODE_API_URL, {
+        query,
+        variables: { username }
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Referer': 'https://leetcode.com',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      });
+
+      return response.data.data.recentSubmissionList;
+    } catch (error) {
+      console.error('Error fetching LeetCode recent submissions:', error);
+      return []; // Return empty array instead of throwing
+    }
+  }
+
+  /**
+   * Check if a user has solved a specific problem on LeetCode
+   * @param {string} username - LeetCode username
+   * @param {string} problemSlug - Problem title slug (e.g., 'two-sum')
+   * @returns {Promise<boolean>} - True if the problem is solved, false otherwise
+   */
+  async hasSolvedProblem(username, problemSlug) {
+    try {
+      console.log(`Checking if ${username} has solved problem ${problemSlug}...`);
+      
+      // First, try using LeetScan API to get user's solved problems
+      try {
+        console.log(`Fetching user profile from LeetScan API for ${username}...`);
+        const leetScanResponse = await axios.get(`${LEETSCAN_API_BASE}/user`, {
+          params: { username }
+        });
+        
+        console.log('LeetScan API response:', leetScanResponse.data);
+        
+        // Check if we got a valid response with user data
+        if (leetScanResponse.data && leetScanResponse.data.username) {
+          // Now fetch the user's solved problems
+          console.log(`Fetching solved problems for ${username}...`);
+          const solvedProblemsResponse = await axios.get(`${LEETSCAN_API_BASE}/solved`, {
+            params: { username }
+          });
+          
+          console.log('Solved problems response:', solvedProblemsResponse.data);
+          
+          if (solvedProblemsResponse.data && Array.isArray(solvedProblemsResponse.data.solvedQuestions)) {
+            // Check if the problem is in the solved problems list
+            const isSolved = solvedProblemsResponse.data.solvedQuestions.some(problem => 
+              problem.titleSlug === problemSlug || problem.title.toLowerCase().replace(/\\s+/g, '-') === problemSlug
+            );
+            
+            if (isSolved) {
+              console.log(`User ${username} has solved problem ${problemSlug} according to LeetScan API`);
+              return true;
+            }
+          }
+        }
+      } catch (leetScanError) {
+        console.error('Error using LeetScan API:', leetScanError.message);
+        console.log('Falling back to alternative methods...');
+      }
+      
+      // Fallback method 1: Check recent submissions
+      try {
+        const recentSubmissions = await this.getRecentSubmissions(username);
+        const hasSolvedInRecent = recentSubmissions.some(
+          submission => submission.titleSlug === problemSlug && submission.status === 'Accepted'
+        );
+        
+        if (hasSolvedInRecent) {
+          console.log(`Found ${problemSlug} in recent accepted submissions for ${username}`);
+          return true;
+        }
+      } catch (submissionsError) {
+        console.error('Error checking recent submissions:', submissionsError.message);
+      }
+      
+      // Fallback method 2: Try direct problem query
+      try {
+        // First get user data to confirm they have solved problems
+        const userData = await this.getUserProfile(username);
+        const solvedCount = userData?.submitStats?.acSubmissionNum?.find(item => item.difficulty === "All")?.count || 0;
+        console.log(`User has solved ${solvedCount} problems in total`);
+        
+        // If user has solved problems, we'll make one more attempt with a specific problem query
+        if (solvedCount > 0) {
+          // Try to get problem details to see if it's in the user's solved list
+          const problemQuery = `
+            query problemData($titleSlug: String!) {
+              question(titleSlug: $titleSlug) {
+                questionId
+                questionFrontendId
+                title
+                titleSlug
+                isPaidOnly
+                difficulty
+                likes
+                dislikes
+                status
+              }
+            }
+          `;
+          
+          const problemResponse = await axios.post(LEETCODE_API_URL, {
+            query: problemQuery,
+            variables: { titleSlug: problemSlug }
+          }, {
+            headers: {
+              'Content-Type': 'application/json',
+              'Referer': `https://leetcode.com/problems/${problemSlug}/`,
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+          });
+          
+          const status = problemResponse.data?.data?.question?.status;
+          console.log(`Problem status for ${problemSlug}: ${status}`);
+          
+          // If status is 'ac', the problem is solved
+          if (status === 'ac') {
+            console.log(`Confirmed ${username} has solved ${problemSlug}`);
+            return true;
+          }
+        }
+      } catch (directQueryError) {
+        console.error('Error in direct problem query:', directQueryError.message);
+      }
+      
+      // If we can't verify, assume the problem is not solved
+      console.log(`Could not verify if ${username} solved ${problemSlug}, assuming NOT solved`);
+      return false;
+    } catch (error) {
+      console.error(`Error checking if ${username} solved ${problemSlug}:`, error);
+      // If there's an error, assume the problem is not solved
+      return false;
+    }
+  }
+
+  /**
+   * Verify a LeetCode account by checking if the verification code is in the user's bio
+   * @param {string} username - LeetCode username
+   * @param {string} verificationCode - The verification code to check for
+   * @returns {Promise<boolean>} - True if verified, false otherwise
+   */
+  async verifyAccountByBio(username, verificationCode) {
+    try {
+      console.log(`Verifying LeetCode account for ${username} with code ${verificationCode}...`);
+      
+      // Try to get the user profile
+      const userProfile = await this.getUserProfile(username);
+      
+      if (!userProfile) {
+        console.log(`User profile not found for ${username}`);
+        return false;
+      }
+      
+      // Check if the verification code is in the user's bio
+      const aboutMe = userProfile.profile?.aboutMe || '';
+      console.log(`User bio: ${aboutMe}`);
+      
+      const isVerified = aboutMe.includes(verificationCode);
+      console.log(`Verification result for ${username}: ${isVerified ? 'Verified' : 'Not verified'}`);
+      
+      return isVerified;
+    } catch (error) {
+      console.error(`Error verifying LeetCode account for ${username}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Generate a random verification code
+   * @returns {string} A random verification code
+   */
+  generateVerificationCode() {
+    return `edusoft-${crypto.randomBytes(4).toString('hex')}`;
+  }
+
+  /**
+   * Get a list of easy problems for assessment
+   * @returns {Promise<Array>} List of easy problems
+   */
+  async getEasyProblems() {
+    try {
+      const query = `
+        query problemsetQuestionList($categorySlug: String, $limit: Int, $skip: Int, $filters: QuestionListFilterInput) {
+          problemsetQuestionList: questionList(
+            categorySlug: $categorySlug
+            limit: $limit
+            skip: $skip
+            filters: $filters
+          ) {
+            total: totalNum
+            questions: data {
+              questionId
+              questionFrontendId
+              title
+              titleSlug
+              difficulty
+              acRate
+              topicTags {
+                name
+                slug
+              }
+            }
+          }
+        }
+      `;
+
+      const variables = {
+        categorySlug: "",
+        skip: 0,
+        limit: 15,
+        filters: { difficulty: "EASY" }
+      };
+
+      const response = await axios.post(LEETCODE_API_URL, {
+        query,
+        variables
+      });
+
+      return response.data.data.problemsetQuestionList.questions;
+    } catch (error) {
+      console.error('Error fetching easy problems:', error);
+      throw new Error('Failed to fetch easy problems');
+    }
+  }
+
+  /**
+   * Select random problems for assessment
+   * @param {number} count - Number of problems to select
+   * @returns {Promise<Array>} Selected problems
+   */
+  async selectRandomProblems(count = 3) {
+    try {
+      // Common well-known LeetCode problems that are guaranteed to exist
+      const commonProblems = [
+        {
+          questionId: '13',
+          questionFrontendId: '13',
+          title: 'Roman to Integer',
+          titleSlug: 'roman-to-integer',
+          difficulty: 'EASY'
+        },
+        {
+          questionId: '9',
+          questionFrontendId: '9',
+          title: 'Palindrome Number',
+          titleSlug: 'palindrome-number',
+          difficulty: 'EASY'
+        },
+        {
+          questionId: '66',
+          questionFrontendId: '66',
+          title: 'Plus One',
+          titleSlug: 'plus-one',
+          difficulty: 'EASY'
+        },
+        {
+          questionId: '1',
+          questionFrontendId: '1',
+          title: 'Two Sum',
+          titleSlug: 'two-sum',
+          difficulty: 'EASY'
+        },
+        {
+          questionId: '20',
+          questionFrontendId: '20',
+          title: 'Valid Parentheses',
+          titleSlug: 'valid-parentheses',
+          difficulty: 'EASY'
+        },
+        {
+          questionId: '21',
+          questionFrontendId: '21',
+          title: 'Merge Two Sorted Lists',
+          titleSlug: 'merge-two-sorted-lists',
+          difficulty: 'EASY'
+        }
+      ];
+      
+      try {
+        // Try to get problems from API first
+        const apiProblems = await this.getEasyProblems();
+        if (apiProblems && apiProblems.length >= count) {
+          // Shuffle and pick random problems from API
+          const shuffled = [...apiProblems].sort(() => 0.5 - Math.random());
+          return shuffled.slice(0, count);
+        }
+      } catch (apiError) {
+        console.error('Error fetching problems from API, using common problems:', apiError);
+      }
+      
+      // Fallback to common problems if API fails
+      const shuffled = [...commonProblems].sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, count);
+    } catch (error) {
+      console.error('Error selecting random problems:', error);
+      throw new Error('Failed to select random problems');
+    }
+  }
+}
+
+// Export a singleton instance
+const leetcodeService = new LeetCodeService();
+export default leetcodeService;

@@ -41,6 +41,7 @@ import PuzzleInstructions from "./components/PuzzleInstructions";
 import AssessmentInstructionsAdaptability from "./pages/AssessmentInstructions_adaptability";
 import AssessmentQuizAdaptability from "./pages/AssessmentQuiz_adaptability";
 import Recommendations from "./pages/Recommendations";
+import LeetCodeAssessment from "./pages/LeetCodeAssessment";
 
 const App = () => {
   return (
@@ -90,6 +91,7 @@ const App = () => {
         <Route path="/assessment/instructions/adaptability" element={<AssessmentInstructionsAdaptability />} />
         <Route path="/assessment/quiz/adaptability" element={<AssessmentQuizAdaptability />} />
         <Route path="/recommendations" element={<Recommendations />} />
+        <Route path="/assessment/leetcode" element={<LeetCodeAssessment />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

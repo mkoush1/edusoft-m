@@ -1,4 +1,6 @@
-import LeetCodeAssessment from '../models/LeetCodeAssessment.js';
+import mongoose from 'mongoose';
+import { validationResult } from 'express-validator';
+import LeetCodeAssessment from '../../models/LeetCodeAssessment.js';
 import leetcodeService from '../services/leetcodeService.js';
 
 /**
@@ -6,40 +8,97 @@ import leetcodeService from '../services/leetcodeService.js';
  */
 export const startLeetCodeAssessment = async (req, res) => {
   try {
+    console.log('Starting LeetCode assessment with payload:', req.body);
     const { userId, leetCodeUsername } = req.body;
 
     if (!userId || !leetCodeUsername) {
+      console.log('Missing required fields:', { userId, leetCodeUsername });
       return res.status(400).json({ message: 'User ID and LeetCode username are required' });
     }
 
     // Check if user already has an active assessment
+    console.log(`Checking for existing assessments for user ${userId}`);
     const existingAssessment = await LeetCodeAssessment.findOne({
       userId,
       status: { $in: ['not_started', 'in_progress'] }
     });
 
     if (existingAssessment) {
+      console.log('User already has an active assessment:', existingAssessment._id);
       return res.status(400).json({
         message: 'You already have an active LeetCode assessment',
         assessment: existingAssessment
       });
     }
 
+    // Verify that the LeetCode username exists
+    console.log(`Verifying LeetCode username: ${leetCodeUsername}`);
+    const usernameExists = await leetcodeService.checkUsernameExists(leetCodeUsername);
+    
+    if (!usernameExists) {
+      console.log(`LeetCode username '${leetCodeUsername}' does not exist`);
+      return res.status(400).json({
+        message: `The LeetCode username '${leetCodeUsername}' does not exist. Please enter a valid LeetCode username.`
+      });
+    }
+    
+    console.log(`LeetCode username '${leetCodeUsername}' verified successfully`);
+
     // Generate verification code
+    console.log('Generating verification code');
     const verificationCode = leetcodeService.generateVerificationCode();
+    console.log('Generated verification code:', verificationCode);
 
     // Select random problems for the assessment
-    const problems = await leetcodeService.selectRandomProblems(3);
+    console.log('Selecting random problems');
+    let problems;
+    try {
+      problems = await leetcodeService.selectRandomProblems(3);
+      console.log('Selected problems:', problems);
+    } catch (problemError) {
+      console.error('Error selecting problems:', problemError);
+      // Use fallback problems if there's an error
+      problems = [
+        {
+          questionId: '1',
+          questionFrontendId: '1',
+          title: 'Two Sum',
+          titleSlug: 'two-sum',
+          difficulty: 'EASY'
+        },
+        {
+          questionId: '9',
+          questionFrontendId: '9',
+          title: 'Palindrome Number',
+          titleSlug: 'palindrome-number',
+          difficulty: 'EASY'
+        },
+        {
+          questionId: '13',
+          questionFrontendId: '13',
+          title: 'Roman to Integer',
+          titleSlug: 'roman-to-integer',
+          difficulty: 'EASY'
+        }
+      ];
+      console.log('Using fallback problems');
+    }
     
     // Format problems for storage
+    console.log('Formatting problems for storage');
     const assignedProblems = problems.map(problem => ({
-      problemId: problem.questionId,
-      title: problem.title,
-      difficulty: problem.difficulty,
-      titleSlug: problem.titleSlug
+      problemId: problem.questionId || problem.id || '1',
+      title: problem.title || 'Two Sum',
+      difficulty: problem.difficulty || 'EASY',
+      titleSlug: problem.titleSlug || problem.titleSlug || '',
+      completed: false,
+      completedAt: null
     }));
+    console.log('Formatted problems:', assignedProblems);
+    console.log('DEBUG: assignedProblems to be saved:', assignedProblems);
 
     // Create new assessment
+    console.log('Creating new assessment document');
     const newAssessment = new LeetCodeAssessment({
       userId,
       leetCodeUsername,
@@ -49,8 +108,11 @@ export const startLeetCodeAssessment = async (req, res) => {
       status: 'not_started'
     });
 
+    console.log('Saving new assessment to database');
     await newAssessment.save();
+    console.log('Assessment saved with ID:', newAssessment._id);
 
+    console.log('Sending successful response');
     res.status(201).json({
       message: 'LeetCode assessment created successfully',
       assessment: newAssessment,
@@ -58,7 +120,12 @@ export const startLeetCodeAssessment = async (req, res) => {
     });
   } catch (error) {
     console.error('Error starting LeetCode assessment:', error);
-    res.status(500).json({ message: 'Failed to start LeetCode assessment', error: error.message });
+    // Send more detailed error information for debugging
+    res.status(500).json({ 
+      message: 'Failed to start LeetCode assessment', 
+      error: error.message,
+      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
+    });
   }
 };
 
@@ -167,13 +234,7 @@ export const checkLeetCodeProgress = async (req, res) => {
         totalCompleted++;
       } else {
         console.log('Problem not completed yet');
-        
-        // For testing/demo purposes only - force problems to be marked as completed
-        // Remove in production
-        console.log('TESTING: Forcing problem to be marked as completed');
-        problem.completed = true;
-        problem.completedAt = new Date();
-        totalCompleted++;
+        // Keep the problem as not completed
       }
       
       updatedProblems.push(problem);
@@ -244,5 +305,177 @@ export const getUserLeetCodeAssessments = async (req, res) => {
   } catch (error) {
     console.error('Error getting user LeetCode assessments:', error);
     res.status(500).json({ message: 'Failed to get user LeetCode assessments', error: error.message });
+  }
+};
+
+/**
+ * Check if a specific problem is solved and update progress
+ */
+export const checkProblemStatus = async (req, res) => {
+  try {
+    const { assessmentId, problemId } = req.params;
+    console.log(`Checking problem status for assessment ${assessmentId} and problem ${problemId}`);
+    
+    // Skip userId check for now to simplify debugging
+    // const userId = req.user?.id; // Assuming user ID is available from auth middleware
+
+    // Find the assessment
+    const assessment = await LeetCodeAssessment.findOne({
+      _id: assessmentId
+      // userId - temporarily removed for debugging
+    });
+
+    if (!assessment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assessment not found',
+        assessmentId
+      });
+    }
+
+    console.log(`Found assessment for user ${assessment.userId} with username ${assessment.leetCodeUsername}`);
+    console.log(`Assessment has ${assessment.assignedProblems.length} problems`);
+    
+    // Find the problem in the assessment using numeric problemId
+    let problem = null;
+    
+    // First try direct match on problemId field
+    problem = assessment.assignedProblems.find(p => p.problemId === problemId);
+    
+    // If not found, try matching by MongoDB _id
+    if (!problem && mongoose.Types.ObjectId.isValid(problemId)) {
+      problem = assessment.assignedProblems.find(p => p._id.toString() === problemId);
+    }
+    
+    // If still not found, try matching by title or titleSlug
+    if (!problem) {
+      problem = assessment.assignedProblems.find(p => 
+        p.title.toLowerCase().includes(problemId.toLowerCase()) || 
+        (p.titleSlug && p.titleSlug.toLowerCase().includes(problemId.toLowerCase()))
+      );
+    }
+    
+    if (!problem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Problem not found in this assessment',
+        problemId: problemId,
+        availableProblems: assessment.assignedProblems.map(p => ({ 
+          _id: p._id, 
+          problemId: p.problemId,
+          title: p.title,
+          titleSlug: p.titleSlug
+        }))
+      });
+    }
+    
+    console.log(`Found problem: ${problem.title} (${problem.problemId})`);
+
+    // Skip if already completed
+    if (problem.completed) {
+      return res.status(200).json({
+        success: true,
+        message: 'Problem already marked as completed',
+        completed: true,
+        assessment,
+        problem
+      });
+    }
+
+    // Check if problem is solved on LeetCode
+    try {
+      console.log(`Checking if ${assessment.leetCodeUsername} has solved problem ${problem.title} (${problem.problemId}) [slug: ${problem.titleSlug}]`);
+      // Always use titleSlug for the check, regardless of what is passed in the URL
+      const isSolved = await leetcodeService.hasSolvedProblem(
+        assessment.leetCodeUsername,
+        problem.titleSlug
+      );
+      console.log(`[DEBUG] hasSolvedProblem result for user=${assessment.leetCodeUsername}, slug=${problem.titleSlug}:`, isSolved);
+      // If your leetcodeService.hasSolvedProblem can log the raw API response, do so there as well.
+
+      if (!isSolved) {
+        return res.status(200).json({
+          success: true,
+          message: 'Problem not yet solved on LeetCode. Please solve it on LeetCode and try again.',
+          completed: false,
+          assessment
+        });
+      }
+      
+      console.log('Problem verified as solved! Updating assessment...');
+    } catch (error) {
+      console.error('Error checking if problem is solved:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error checking problem solution status',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
+    }
+
+    // Update the problem status
+    problem.completed = true;
+    problem.completedAt = new Date();
+
+    // Calculate new score (1 point for Easy, 2 for Medium, 3 for Hard)
+    const difficultyScores = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
+    const newScore = assessment.score + (difficultyScores[problem.difficulty] || 1);
+    
+    // Check if all problems are completed
+    const allCompleted = assessment.assignedProblems.every(p => 
+      p._id.toString() === problem._id.toString() ? true : p.completed
+    );
+
+    console.log(`Updating assessment. New score: ${newScore}, All completed: ${allCompleted}`);
+
+    try {
+      // Find the problem index in the array
+      const problemIndex = assessment.assignedProblems.findIndex(p => 
+        p._id.toString() === problem._id.toString() || 
+        p.problemId === problem.problemId
+      );
+      
+      if (problemIndex === -1) {
+        throw new Error('Problem not found in assessment');
+      }
+      
+      // Update the problem directly in the array
+      assessment.assignedProblems[problemIndex].completed = true;
+      assessment.assignedProblems[problemIndex].completedAt = new Date();
+      
+      // Update other assessment fields
+      assessment.score = newScore;
+      assessment.status = allCompleted ? 'completed' : 'in_progress';
+      if (allCompleted) {
+        assessment.completedAt = new Date();
+      }
+      
+      // Save the updated assessment
+      await assessment.save();
+      
+      console.log('Assessment updated successfully');
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Problem marked as completed!',
+        completed: true,
+        assessment,
+        problem: assessment.assignedProblems[problemIndex]
+      });
+    } catch (error) {
+      console.error('Error updating assessment:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error updating assessment',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
+    }
+
+  } catch (error) {
+    console.error('Error checking problem status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check problem status',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
   }
 };

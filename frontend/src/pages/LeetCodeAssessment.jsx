@@ -5,6 +5,9 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import LeetCodeFAQ from '../components/LeetCodeFAQ';
 import api from '../utils/axiosConfig';
 
+// Helper function to validate MongoDB ObjectId
+const isValidObjectId = (id) => typeof id === 'string' && /^[a-f\d]{24}$/i.test(id);
+
 const LeetCodeAssessment = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -16,37 +19,46 @@ const LeetCodeAssessment = () => {
   const [problems, setProblems] = useState([]);
   const [progress, setProgress] = useState(0);
   const [userId, setUserId] = useState('');
+  const [isChecking, setIsChecking] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // Add this to force re-renders
 
   useEffect(() => {
-    // Get user ID from local storage
     try {
       const userString = localStorage.getItem('user');
-      console.log('User string from localStorage:', userString);
-      
       if (userString) {
         const user = JSON.parse(userString);
-        console.log('Parsed user object:', user);
-        
-        if (user && user._id) {
-          console.log('Setting userId to:', user._id);
+        if (user && user._id && isValidObjectId(user._id)) {
           setUserId(user._id);
         } else {
-          console.error('User object does not have _id property:', user);
-          // Try alternative property names that might contain the ID
-          const possibleIdFields = ['id', 'userId', 'user_id'];
-          for (const field of possibleIdFields) {
-            if (user && user[field]) {
-              console.log(`Found alternative ID field: ${field} with value:`, user[field]);
-              setUserId(user[field]);
-              break;
-            }
-          }
+          setError('Invalid or missing user ID. Please log in again.');
         }
       } else {
-        console.error('No user found in localStorage');
+        // Try to get token from localStorage as fallback
+        const token = localStorage.getItem('token');
+        if (token) {
+          try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            const decodedToken = JSON.parse(jsonPayload);
+            if (decodedToken.userId && isValidObjectId(decodedToken.userId)) {
+              setUserId(decodedToken.userId);
+            } else if (decodedToken.id && isValidObjectId(decodedToken.id)) {
+              setUserId(decodedToken.id);
+            } else {
+              setError('Invalid or missing user ID in token. Please log in again.');
+            }
+          } catch (tokenError) {
+            setError('Error decoding token. Please log in again.');
+          }
+        } else {
+          setError('No user found. Please log in.');
+        }
       }
     } catch (error) {
-      console.error('Error parsing user from localStorage:', error);
+      setError('Error reading user info. Please log in again.');
     }
   }, []);
 
@@ -55,46 +67,39 @@ const LeetCodeAssessment = () => {
       setError('Please enter your LeetCode username');
       return;
     }
-
-    // Check if userId is available
-    if (!userId) {
-      console.error('User ID is missing');
-      setError('User ID is missing. Please make sure you are logged in.');
+    // Validate userId
+    if (!userId || !isValidObjectId(userId)) {
+      setError('User ID is missing or invalid. Please log in again or enter a valid User ID.');
       return;
     }
-
-    console.log('Starting assessment with:', { userId, leetCodeUsername: username });
     setLoading(true);
     setError(null);
-
     try {
       const payload = {
         userId,
         leetCodeUsername: username
       };
-      console.log('Sending payload:', payload);
-      
       const response = await api.post('/api/assessments/leetcode/start', payload);
-
       setAssessment(response.data.assessment);
       setVerificationCode(response.data.assessment.verificationCode);
       setStep('verification');
     } catch (err) {
-      console.error('Error starting LeetCode assessment:', err);
-      setError(err.response?.data?.message || 'Failed to start assessment');
-      
-      // If user already has an active assessment
-      if (err.response?.data?.assessment) {
-        setAssessment(err.response.data.assessment);
-        
-        // Determine which step to show based on assessment status
-        if (err.response.data.assessment.verificationStatus === 'verified') {
-          setProblems(err.response.data.assessment.assignedProblems);
-          setStep('problems');
-        } else {
-          setVerificationCode(err.response.data.assessment.verificationCode);
-          setStep('verification');
+      if (err.response?.data) {
+        setError(err.response.data.message || 'Failed to start assessment');
+        if (err.response.data.assessment) {
+          setAssessment(err.response.data.assessment);
+          if (err.response.data.assessment.verificationStatus === 'verified') {
+            setProblems(err.response.data.assessment.assignedProblems);
+            setStep('problems');
+          } else {
+            setVerificationCode(err.response.data.assessment.verificationCode);
+            setStep('verification');
+          }
         }
+      } else if (err.message) {
+        setError(`Connection error: ${err.message}. Please try again later.`);
+      } else {
+        setError('An unknown error occurred. Please try again later.');
       }
     } finally {
       setLoading(false);
@@ -138,9 +143,16 @@ const LeetCodeAssessment = () => {
       const response = await api.get(`/api/assessments/leetcode/progress/${assessment._id}`);
       console.log('Progress response:', response.data);
       
+      // Force a deep refresh of the problems array to ensure React detects changes
+      const updatedProblems = response.data.assessment.assignedProblems.map(problem => ({
+        ...problem,
+        // Convert string dates to Date objects if needed
+        completedAt: problem.completedAt ? new Date(problem.completedAt) : null
+      }));
+      
       // Update state with new data
       setAssessment(response.data.assessment);
-      setProblems(response.data.assessment.assignedProblems);
+      setProblems(updatedProblems); // Use the mapped problems
       setProgress(response.data.score);
       
       // Remove the progress toast
@@ -161,6 +173,9 @@ const LeetCodeAssessment = () => {
       if (response.data.assessment.status === 'completed') {
         setStep('completed');
       }
+      
+      // Force a re-render to ensure UI updates
+      setRefreshKey(prevKey => prevKey + 1);
     } catch (err) {
       console.error('Error checking LeetCode progress:', err);
       setError(err.response?.data?.message || 'Failed to check progress');
@@ -175,6 +190,134 @@ const LeetCodeAssessment = () => {
       setTimeout(() => {
         document.body.removeChild(errorToast);
       }, 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const checkProblemStatus = async (problemId) => {
+    if (!assessment?._id || !problemId) return;
+    
+    setIsChecking(true);
+    setError(null);
+    
+    try {
+      // Log the problem ID we're checking
+      console.log('Checking problem status for:', { assessmentId: assessment._id, problemId });
+      
+      // The correct endpoint based on the backend routes
+      // Note: The route in the backend is defined as '/:assessmentId/problems/:problemId/check'
+      const response = await api.get(`/api/assessments/leetcode/${assessment._id}/problems/${problemId}/check`);
+      console.log('Problem check response:', response.data);
+      
+      if (response.data.completed) {
+        // Update the problem status in the local state
+        setProblems(prevProblems => 
+          prevProblems.map(p => 
+            p.problemId === problemId 
+              ? { ...p, completed: true, completedAt: new Date() } 
+              : p
+          )
+        );
+        
+        // Update the assessment in the local state
+        if (response.data.assessment) {
+          setAssessment(response.data.assessment);
+          
+          // Update progress
+          const completedCount = response.data.assessment.assignedProblems?.filter(p => p.completed).length || 0;
+          const totalCount = response.data.assessment.assignedProblems?.length || 1;
+          const newProgress = Math.round((completedCount / totalCount) * 100);
+          setProgress(newProgress);
+          
+          // If all problems are completed, move to completed step
+          if (response.data.assessment.status === 'completed') {
+            setStep('completed');
+          }
+        }
+        
+        // Show success toast
+        const successToast = document.createElement('div');
+        successToast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50';
+        successToast.textContent = 'Problem solution verified! ✓';
+        document.body.appendChild(successToast);
+        
+        // Remove success toast after 3 seconds
+        setTimeout(() => {
+          document.body.removeChild(successToast);
+        }, 3000);
+        
+        return true;
+      } else {
+        // Show info toast
+        const infoToast = document.createElement('div');
+        infoToast.className = 'fixed top-4 right-4 bg-yellow-500 text-white px-4 py-2 rounded shadow-lg z-50';
+        infoToast.textContent = 'Problem not completed yet. Keep working!';
+        document.body.appendChild(infoToast);
+        
+        // Remove info toast after 3 seconds
+        setTimeout(() => {
+          document.body.removeChild(infoToast);
+        }, 3000);
+      }
+      
+      return false;
+      
+    } catch (err) {
+      console.error('Error checking problem status:', err);
+      setError(err.response?.data?.message || 'Failed to check problem status');
+      
+      // Show error toast
+      const errorToast = document.createElement('div');
+      errorToast.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded shadow-lg z-50';
+      errorToast.textContent = 'Error checking problem status. Please try again.';
+      document.body.appendChild(errorToast);
+      
+      // Remove error toast after 3 seconds
+      setTimeout(() => {
+        document.body.removeChild(errorToast);
+      }, 3000);
+      
+      return false;
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const checkProgress = async () => {
+    if (!assessment?._id) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.get(`/api/assessments/leetcode/progress/${assessment._id}`);
+      console.log('Progress check response:', response.data);
+      
+      if (response.data.assessment) {
+        setAssessment(response.data.assessment);
+        
+        // Update problems list
+        if (response.data.assessment.assignedProblems) {
+          setProblems(response.data.assessment.assignedProblems);
+        }
+        
+        // Calculate progress
+        const completedCount = response.data.completedCount || 0;
+        const totalCount = response.data.totalProblems || 1; // Avoid division by zero
+        const newProgress = Math.round((completedCount / totalCount) * 100);
+        
+        setProgress(newProgress);
+        
+        // If all problems are completed, move to completed step
+        if (response.data.assessment.status === 'completed' || response.data.isCompleted) {
+          setStep('completed');
+        }
+      }
+      
+    } catch (err) {
+      console.error('Error checking progress:', err);
+      setError(err.response?.data?.message || 'Failed to check progress');
     } finally {
       setLoading(false);
     }
@@ -200,39 +343,41 @@ const LeetCodeAssessment = () => {
             placeholder="Enter your LeetCode username"
           />
         </div>
-        
-        {!userId && (
+        {(!userId || !isValidObjectId(userId)) && (
           <div className="mb-4">
             <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-1">
-              User ID (Not automatically detected)
+              User ID (Not automatically detected or invalid)
             </label>
             <input
               type="text"
               id="userId"
               value={userId || ''}
-              onChange={(e) => setUserId(e.target.value)}
+              onChange={(e) => {
+                setUserId(e.target.value);
+                if (e.target.value && !isValidObjectId(e.target.value)) {
+                  setError('User ID must be a valid 24-character hex string (MongoDB ObjectId).');
+                } else {
+                  setError(null);
+                }
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#592538]"
               placeholder="Enter your User ID"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Your User ID couldn't be automatically detected. Please enter it manually.
+              Your User ID couldn't be automatically detected or is invalid. Please enter it manually. It should be a 24-character hex string (e.g. 661f2e2b7c2e4b2f8c8e4b2f).
             </p>
           </div>
         )}
-        
         {error && <p className="text-red-500 mb-4">{error}</p>}
         <button
           onClick={handleStartAssessment}
-          disabled={loading}
-          className="w-full px-4 py-2 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300 disabled:bg-gray-400 flex justify-center items-center"
+          className="w-full bg-[#592538] text-white py-2 px-4 rounded hover:bg-[#7a3c59] transition-colors duration-200"
+          disabled={loading || !username || !userId || !isValidObjectId(userId)}
         >
-          {loading ? <><LoadingSpinner size="small" color="white" /><span className="ml-2">Processing...</span></> : 'Start Assessment'}
+          {loading ? <LoadingSpinner size={24} /> : 'Start Assessment'}
         </button>
       </div>
-      
-      <div className="max-w-md mx-auto">
-        <LeetCodeFAQ />
-      </div>
+      <LeetCodeFAQ />
     </div>
   );
 
@@ -303,15 +448,15 @@ const LeetCodeAssessment = () => {
 
       <div className="space-y-4 mb-6">
         {problems.map((problem, index) => (
-          <div key={index} className="border rounded-lg p-4 bg-gray-50">
+          <div key={`${index}-${refreshKey}-${problem.completed ? 'completed' : 'pending'}`} className="border rounded-lg p-4 bg-gray-50">
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="font-semibold text-lg">{problem.title}</h3>
                 <p className="text-sm text-gray-600 mb-2">Difficulty: {problem.difficulty}</p>
               </div>
               {problem.completed ? (
-                <span className="px-2 py-1 bg-green-100 text-green-800 rounded-md text-sm">
-                  Completed
+                <span className="px-2 py-1 bg-green-100 text-green-800 rounded-md text-sm font-medium">
+                  Completed ✓
                 </span>
               ) : (
                 <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-md text-sm">
@@ -319,18 +464,34 @@ const LeetCodeAssessment = () => {
                 </span>
               )}
             </div>
-            <button
-              onClick={() => {
-                // Use problem title to search on LeetCode if titleSlug isn't working
-                const searchQuery = problem.titleSlug || problem.title.toLowerCase().replace(/\s+/g, '-');
-                const leetCodeUrl = `https://leetcode.com/problems/${searchQuery}/`;
-                console.log('Opening LeetCode problem URL:', leetCodeUrl);
-                window.open(leetCodeUrl, '_blank');
-              }}
-              className="mt-2 px-3 py-1 bg-blue-50 text-blue-600 rounded border border-blue-200 text-sm hover:bg-blue-100 transition duration-300"
-            >
-              Solve on LeetCode
-            </button>
+            <div className="flex space-x-2 mt-2">
+              <button
+                onClick={() => {
+                  // Use problem title to search on LeetCode if titleSlug isn't working
+                  const searchQuery = problem.titleSlug || problem.title.toLowerCase().replace(/\s+/g, '-');
+                  const leetCodeUrl = `https://leetcode.com/problems/${searchQuery}/`;
+                  console.log('Opening LeetCode problem URL:', leetCodeUrl);
+                  window.open(leetCodeUrl, '_blank');
+                }}
+                className="px-3 py-1 bg-blue-50 text-blue-600 rounded border border-blue-200 text-sm hover:bg-blue-100 transition duration-300"
+              >
+                Solve on LeetCode
+              </button>
+              
+              <button
+                onClick={() => {
+                  console.log('Problem data:', problem);
+                  // Use problemId as it's more reliable than _id for LeetCode problems
+                  checkProblemStatus(problem.problemId);
+                }}
+                disabled={isChecking || problem.completed}
+                className={`px-3 py-1 rounded border text-sm transition duration-300 ${problem.completed 
+                  ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' 
+                  : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}
+              >
+                {isChecking ? 'Checking...' : problem.completed ? 'Verified ✓' : 'Check Solution'}
+              </button>
+            </div>
           </div>
         ))}
       </div>

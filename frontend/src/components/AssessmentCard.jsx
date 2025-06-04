@@ -32,6 +32,14 @@ const AssessmentCard = ({ assessment, onViewResults }) => {
     else if (assessment._id === "codeforces-link") {
       navigate("/assessment/codeforces-link");
     }
+    // LeetCode assessment
+    else if (
+      assessment._id === "leetcode" || 
+      assessment.category?.toLowerCase() === "leetcode" ||
+      assessment.title?.toLowerCase().includes("leetcode")
+    ) {
+      navigate("/assessment/leetcode");
+    }
     // Presentation skills
     else if (normalizedCategory === "presentation") {
       navigate("/presentation-assessment");

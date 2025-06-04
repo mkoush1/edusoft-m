@@ -491,6 +491,4 @@ class LeetCodeService {
   }
 }
 
-// Export a singleton instance
-const leetcodeService = new LeetCodeService();
-export default leetcodeService;
+export default new LeetCodeService();
