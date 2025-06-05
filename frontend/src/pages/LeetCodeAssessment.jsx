@@ -143,6 +143,18 @@ const LeetCodeAssessment = () => {
       const response = await api.get(`/api/assessments/leetcode/progress/${assessment._id}`);
       console.log('Progress response:', response.data);
       
+      // Ensure we have valid response data
+      if (!response.data || !response.data.assessment) {
+        throw new Error('Invalid response from server');
+      }
+      
+      // Calculate the actual progress based on completed problems
+      const completedProblems = response.data.assessment.assignedProblems.filter(p => p.completed).length;
+      const totalProblems = response.data.assessment.assignedProblems.length;
+      const calculatedProgress = totalProblems > 0 ? Math.round((completedProblems / totalProblems) * 100) : 0;
+      
+      console.log(`Progress: ${completedProblems}/${totalProblems} = ${calculatedProgress}%`);
+      
       // Force a deep refresh of the problems array to ensure React detects changes
       const updatedProblems = response.data.assessment.assignedProblems.map(problem => ({
         ...problem,
@@ -151,26 +163,31 @@ const LeetCodeAssessment = () => {
       }));
       
       // Update state with new data
-      setAssessment(response.data.assessment);
-      setProblems(updatedProblems); // Use the mapped problems
-      setProgress(response.data.score);
+      setAssessment({
+        ...response.data.assessment,
+        score: calculatedProgress // Ensure we're using the calculated progress
+      });
+      setProblems(updatedProblems);
+      setProgress(calculatedProgress);
       
       // Remove the progress toast
       document.body.removeChild(progressToast);
       
-      // Show success toast
+      // Show success toast with actual progress
       const successToast = document.createElement('div');
       successToast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50';
-      successToast.textContent = `Progress updated! Score: ${response.data.score}%`;
+      successToast.textContent = `Progress updated! ${completedProblems} of ${totalProblems} problems solved (${calculatedProgress}%)`;
       document.body.appendChild(successToast);
       
       // Remove success toast after 3 seconds
       setTimeout(() => {
-        document.body.removeChild(successToast);
+        if (document.body.contains(successToast)) {
+          document.body.removeChild(successToast);
+        }
       }, 3000);
       
       // If all problems are completed, move to the completed step
-      if (response.data.assessment.status === 'completed') {
+      if (response.data.assessment.status === 'completed' || completedProblems === totalProblems) {
         setStep('completed');
       }
       

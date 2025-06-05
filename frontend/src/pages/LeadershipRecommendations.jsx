@@ -11,6 +11,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { getAssessmentResults } from "../services/api";
+import { FaMedal, FaChartBar, FaGraduationCap } from "react-icons/fa";
+import { motion } from "framer-motion";
 
 const CourseCard = ({
   title,
@@ -50,6 +52,15 @@ const LeadershipRecommendations = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+
+  const leadershipTraits = [
+    { trait: "Communication", score: results?.communication || 0 },
+    { trait: "Decision Making", score: results?.decisionMaking || 0 },
+    { trait: "Team Management", score: results?.teamManagement || 0 },
+    { trait: "Problem Solving", score: results?.problemSolving || 0 },
+    { trait: "Adaptability", score: results?.adaptability || 0 },
+    { trait: "Vision", score: results?.vision || 0 }
+  ];
 
   const recommendedCourses = [
     {
@@ -98,8 +109,11 @@ const LeadershipRecommendations = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FDF8F8] flex items-center justify-center">
-        <div className="text-[#592538] text-xl">Loading results...</div>
+      <div className="min-h-screen bg-gradient-to-br from-[#FDF8F8] to-white flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#592538] mx-auto"></div>
+          <h2 className="text-xl font-semibold text-[#592538]">Loading your leadership assessment...</h2>
+        </div>
       </div>
     );
   }

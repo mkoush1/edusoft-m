@@ -40,10 +40,20 @@ const AssessmentQuizFast = () => {
         }
         setLoading(false);
       } catch (error) {
-        setError(
-          error.response?.data?.message ||
-            "Error starting assessment. Please try again later."
-        );
+        if (error.response?.status === 403) {
+          // User has already completed the assessment
+          navigate('/assessment/results', {
+            state: {
+              assessmentStatus: error.response.data.assessmentStatus,
+              score: error.response.data.score
+            }
+          });
+        } else {
+          setError(
+            error.response?.data?.message ||
+              "Error starting assessment. Please try again later."
+          );
+        }
         setLoading(false);
       }
     };
@@ -139,7 +149,8 @@ const AssessmentQuizFast = () => {
           },
         }
       );
-      navigate("/dashboard");
+      // Navigate to AssessmentResults with type parameter
+      navigate('/assessment-results?assessmentType=fast-questions');
     } catch (error) {
       setError("Failed to submit assessment. Please try again.");
     } finally {

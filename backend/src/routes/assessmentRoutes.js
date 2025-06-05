@@ -330,7 +330,9 @@ router.post('/start/leadership', authenticateToken, async (req, res) => {
     });
 
     if (existingResult) {
-      return res.status(400).json({ message: 'You have already completed this assessment' });
+      return res.status(403).json({
+        message: 'You have already completed this assessment. You cannot retake it.'
+      });
     }
 
     // Get leadership questions
@@ -880,6 +882,219 @@ router.post('/submit/puzzle-game', authenticateToken, async (req, res) => {
   }
 });
 
+// Get Puzzle Game Assessment Results
+router.post('/submit/puzzle-game', authenticateToken, async (req, res) => {
+  try {
+    const { puzzleData } = req.body;
+    const userId = req.userId;
+
+    if (!Array.isArray(puzzleData)) {
+      return res.status(400).json({ message: 'Invalid puzzle data format' });
+    }
+
+    // Calculate total score based on completed puzzles
+    let totalScore = 0;
+    let maxScore = 100;
+    let totalMoves = 0;
+    let totalTime = 0;
+    let completedPuzzles = 0;
+    let rating = '';
+
+    puzzleData.forEach(puzzle => {
+      if (puzzle.completed) {
+        completedPuzzles++;
+        totalMoves += puzzle.moves;
+        totalTime += puzzle.timeTaken;
+      }
+    });
+
+    // Calculate score based on completion time
+    const completionTime = totalTime / 60; // Convert to minutes
+    if (completionTime <= 1) {
+      totalScore = 100;
+      rating = 'Excellent';
+    } else if (completionTime <= 2) {
+      totalScore = 85;
+      rating = 'Very Good';
+    } else if (completionTime <= 3) {
+      totalScore = 70;
+      rating = 'Good';
+    } else if (completionTime <= 4) {
+      totalScore = 50;
+      rating = 'Fair';
+    } else {
+      totalScore = 30;
+      rating = 'Poor';
+    }
+
+    // Adjust score based on moves efficiency
+    const movesPenalty = Math.min(20, Math.floor(totalMoves / 10));
+    totalScore = Math.max(0, totalScore - movesPenalty);
+
+    // Update user's assessment status
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.completedAssessments) {
+      user.completedAssessments = [];
+    }
+
+    // Check if user has already completed this assessment
+    const existingAssessmentIndex = user.completedAssessments.findIndex(
+      a => a.assessmentType === 'puzzle-game'
+    );
+
+    if (existingAssessmentIndex !== -1) {
+      // Update existing assessment score
+      user.completedAssessments[existingAssessmentIndex] = {
+        assessmentType: 'puzzle-game',
+        completedAt: new Date(),
+        score: totalScore,
+        rating: rating
+      };
+    } else {
+      // Add new completion
+      user.completedAssessments.push({
+        assessmentType: 'puzzle-game',
+        completedAt: new Date(),
+        score: totalScore,
+        rating: rating
+      });
+      user.totalAssessmentsCompleted += 1;
+    }
+
+    // Update progress
+    const totalAssessments = await Assessment.countDocuments();
+    user.progress = Math.min(100, (user.totalAssessmentsCompleted / totalAssessments) * 100);
+
+    await user.save();
+
+    // Create new assessment result
+    const assessmentResult = new AssessmentResult({
+      userId,
+      assessmentType: 'puzzle-game',
+      score: totalScore,
+      maxScore,
+      completedAt: new Date(),
+      rating: rating,
+      details: {
+        completedPuzzles,
+        totalPuzzles: puzzleData.length,
+        totalMoves,
+        totalTime,
+        completionTime: completionTime.toFixed(2),
+        rating: rating
+      }
+    });
+
+    await assessmentResult.save();
+
+    // Update the assessment status to completed
+    await ProblemSolvingAssessment.findOneAndUpdate(
+      { userId, assessmentType: 'puzzle-game', status: 'in-progress' },
+      { status: 'completed', completedAt: new Date() }
+    );
+
+    // Get updated assessment status for response
+    const availableAssessments = await Assessment.find();
+    const completedAssessmentTypes = user.completedAssessments.map(a => a.assessmentType);
+    const remainingAssessments = availableAssessments.filter(
+      assessment => !completedAssessmentTypes.includes(assessment.category)
+    );
+
+    res.json({
+      success: true,
+      message: 'Puzzle game assessment submitted successfully',
+      result: {
+        score: totalScore,
+        maxScore,
+        completedPuzzles,
+        totalPuzzles: puzzleData.length,
+        totalMoves,
+        totalTime,
+        completionTime: completionTime.toFixed(2),
+        rating: rating,
+        assessmentStatus: {
+          availableAssessments: remainingAssessments,
+          completedAssessments: user.completedAssessments,
+          totalAvailable: remainingAssessments.length,
+          totalCompleted: user.totalAssessmentsCompleted,
+          progress: user.progress
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error submitting puzzle game assessment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error submitting assessment',
+      error: error.message
+    });
+  }
+});
+
+// Get Puzzle Game Assessment Results
+router.get('/puzzle-game/user/:userId/results', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    if (req.userId !== userId) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    const results = await AssessmentResult.find({
+      userId,
+      assessmentType: 'puzzle-game'
+    }).sort({ completedAt: -1 });
+
+    const latestResult = results[0];
+    const hasCompletedAssessments = results.length > 0;
+    const overallScore = latestResult ? latestResult.score : null;
+
+    res.json({
+      overallScore,
+      hasCompletedAssessments,
+      canRetake: false,
+      nextAvailableDate: null,
+      results
+    });
+  } catch (error) {
+    console.error('Error fetching puzzle game results:', error);
+    res.status(500).json({ message: 'Error fetching puzzle game results', error: error.message });
+  }
+});
+
+// Get Fast Question Assessment Results
+router.get('/fast-question/user/:userId/results', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    if (req.userId !== userId) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    const results = await AssessmentResult.find({
+      userId,
+      assessmentType: 'fast-question'
+    }).sort({ completedAt: -1 });
+
+    const latestResult = results[0];
+    const hasCompletedAssessments = results.length > 0;
+    const overallScore = latestResult ? latestResult.score : null;
+
+    res.json({
+      overallScore,
+      hasCompletedAssessments,
+      canRetake: false,
+      nextAvailableDate: null,
+      results
+    });
+  } catch (error) {
+    console.error('Error fetching fast question results:', error);
+    res.status(500).json({ message: 'Error fetching fast question results', error: error.message });
+  }
+});
+
 // Import the presentation assessment controller
 import { submitPresentation } from '../controllers/presentationAssessment.controller.js';
 
@@ -920,197 +1135,58 @@ router.get('/presentation/submissions', authenticateToken, async (req, res) => {
       .sort({ submittedAt: -1 });
 
     res.json({
-      success: true,
-      data: submissions
+      submissions
     });
   } catch (error) {
     console.error('Error fetching submissions:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Error fetching submissions', 
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error fetching submissions', error: error.message });
   }
 });
 
-// Start adaptability assessment
-router.post('/start/adaptability', authenticateToken, async (req, res) => {
+// Start Fast Questions Assessment
+router.post('/start/fast-questions', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId;
-
-    // Check if user has already completed the assessment
+    
+    // Check if user has already completed this assessment
     const existingResult = await AssessmentResult.findOne({
       userId,
-      assessmentType: 'adaptability'
+      assessmentType: 'fast-question'
     });
 
     if (existingResult) {
-      return res.status(400).json({ message: 'You have already completed this assessment' });
+      return res.status(403).json({
+        message: 'You have already completed this assessment. You cannot retake it.'
+      });
     }
 
-    // Get adaptability questions
-    const questions = await AdaptabilityAssessmentQuestion.find({}).sort('questionNumber');
-
+    // Get questions from the database
+    const questions = await ProblemSolvingQuestion.find({}).sort({ questionNumber: 1 });
+    
     if (!questions || questions.length === 0) {
       return res.status(404).json({ message: 'No questions available' });
     }
 
-    res.json({ questions });
-  } catch (error) {
-    console.error('Error starting adaptability assessment:', error);
-    res.status(500).json({ message: 'Error starting assessment', error: error.message });
-  }
-});
-
-// Submit adaptability assessment
-router.post('/submit/adaptability', authenticateToken, async (req, res) => {
-  try {
-    const { answers } = req.body;
-    const userId = req.userId;
-
-    // Debug: Log received answers
-    console.log('[DEBUG] Received adaptability answers:', JSON.stringify(answers, null, 2));
-
-    // Validate answers
-    if (!Array.isArray(answers) || answers.length === 0) {
-      return res.status(400).json({ message: 'Invalid answers format' });
-    }
-
-    // Get all questions to calculate scores
-    const questions = await AdaptabilityAssessmentQuestion.find({}).sort('questionNumber');
-
-    // Debug: Log fetched questions
-    console.log('[DEBUG] Fetched adaptability questions:', questions.length);
-
-    if (!questions || questions.length === 0) {
-      return res.status(404).json({ message: 'No questions found for scoring' });
-    }
-
-    // Calculate section scores
-    const sectionScores = {};
-    const sectionMaxScores = {};
-
-    questions.forEach(question => {
-      const answer = answers.find(a => a.questionNumber === question.questionNumber);
-      if (!answer) {
-        console.error(`[ERROR] Missing answer for question ${question.questionNumber}`);
-        throw new Error(`Missing answer for question ${question.questionNumber}`);
-      }
-
-      if (!sectionScores[question.section]) {
-        sectionScores[question.section] = 0;
-        sectionMaxScores[question.section] = 0;
-      }
-
-      // For SJT, score is value; for Likert, score is value
-      if (question.questionType === 'SJT') {
-        sectionScores[question.section] += answer.answer; // value from options
-        sectionMaxScores[question.section] += question.maxScore;
-      } else {
-        sectionScores[question.section] += answer.answer; // value from options
-        sectionMaxScores[question.section] += question.maxScore;
-      }
-    });
-
-    // Debug: Log calculated section scores
-    console.log('[DEBUG] Calculated sectionScores:', sectionScores);
-    console.log('[DEBUG] Calculated sectionMaxScores:', sectionMaxScores);
-
-    // Calculate total scores
-    const totalScore = Object.values(sectionScores).reduce((a, b) => a + b, 0);
-    const maxTotalScore = Object.values(sectionMaxScores).reduce((a, b) => a + b, 0);
-    const percentage = (totalScore / maxTotalScore) * 100;
-
-    // Format section scores for storage
-    const formattedSectionScores = Object.keys(sectionScores).map(section => ({
-      section,
-      score: sectionScores[section],
-      maxScore: sectionMaxScores[section]
-    }));
-
-    // Save assessment result
-    const assessmentResult = new AssessmentResult({
-      userId,
-      assessmentType: 'adaptability',
-      answers,
-      sectionScores: formattedSectionScores,
-      totalScore,
-      maxTotalScore,
-      percentage,
-      completedAt: new Date(),
-      score: percentage
-    });
-
-    await assessmentResult.save();
-
-    // Update user's completed assessments and progress
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Check if user has already completed this assessment
-    const existingAssessmentIndex = user.completedAssessments.findIndex(
-      a => a.assessmentType === 'adaptability'
-    );
-
-    if (existingAssessmentIndex !== -1) {
-      // Update existing assessment score
-      user.completedAssessments[existingAssessmentIndex] = {
-        assessmentType: 'adaptability',
-        completedAt: new Date(),
-        score: percentage
-      };
-    } else {
-      // Add new completion
-      user.completedAssessments.push({
-        assessmentType: 'adaptability',
-        completedAt: new Date(),
-        score: percentage
+    // Create or update ProblemSolvingAssessment document
+    let assessment = await ProblemSolvingAssessment.findOne({ userId, assessmentType: 'fast-question' });
+    if (!assessment) {
+      assessment = new ProblemSolvingAssessment({
+        userId,
+        assessmentType: 'fast-question',
+        status: 'in-progress',
+        startedAt: new Date()
       });
-      user.totalAssessmentsCompleted += 1;
     }
-    
-    // Update progress
-    const totalAssessments = await Assessment.countDocuments();
-    user.progress = Math.min(100, (user.totalAssessmentsCompleted / totalAssessments) * 100);
-    
-    await user.save();
 
-    // Get updated assessment status for response
-    const availableAssessments = await Assessment.find();
-    const completedAssessmentTypes = user.completedAssessments.map(a => a.assessmentType);
-    const assessmentStatus = availableAssessments.map(assessment => ({
-      type: assessment.category,
-      title: assessment.title,
-      description: assessment.description,
-      completed: completedAssessmentTypes.includes(assessment.category),
-      score: user.completedAssessments.find(a => a.assessmentType === assessment.category)?.score || null
-    }));
+    await assessment.save();
 
     res.json({
-      message: 'Assessment submitted successfully',
-      result: {
-        totalScore,
-        maxTotalScore,
-        percentage,
-        sectionScores: formattedSectionScores,
-        assessmentStatus
-      }
+      questions,
+      assessmentId: assessment._id
     });
   } catch (error) {
-    console.error('Error submitting adaptability assessment:', error);
-    res.status(500).json({ message: 'Error submitting assessment', error: error.message });
-  }
-});
-
-// Start Fast Questions Assessment (fetch all problem solving questions)
-router.post('/start/fast-questions', async (req, res) => {
-  try {
-    const questions = await ProblemSolvingQuestion.find({}).sort({ questionNumber: 1 });
-    res.json({ questions });
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching fast questions', error: error.message });
+    console.error('Error starting fast questions assessment:', error);
+    res.status(500).json({ message: 'Error starting assessment', error: error.message });
   }
 });
 
@@ -1120,8 +1196,10 @@ router.post('/submit/fast-questions', authenticateToken, async (req, res) => {
     const { answers } = req.body;
     const userId = req.userId;
 
-    // Fetch all questions to check answers
-    const questions = await ProblemSolvingQuestion.find({});
+    // Get all questions for this assessment type
+    const questions = await TestQuestion.find({ assessmentType: 'fast-question' });
+
+    // Calculate score
     let score = 0;
     answers.forEach(ans => {
       const q = questions.find(q => q.questionNumber === ans.questionNumber);
@@ -1130,14 +1208,15 @@ router.post('/submit/fast-questions', authenticateToken, async (req, res) => {
       }
     });
 
-    // Save result to AssessmentResult
+    // Save result
     const assessmentResult = new AssessmentResult({
       userId,
-      assessmentType: 'fast-questions',
+      assessmentType: 'fast-question',
       score,
       completedAt: new Date(),
       details: { totalQuestions: questions.length, answers }
     });
+
     await assessmentResult.save();
 
     // Update user's completed assessments and progress
@@ -1145,38 +1224,28 @@ router.post('/submit/fast-questions', authenticateToken, async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    const existingAssessmentIndex = user.completedAssessments.findIndex(
-      a => a.assessmentType === 'fast-questions'
-    );
-    if (existingAssessmentIndex !== -1) {
-      user.completedAssessments[existingAssessmentIndex] = {
-        assessmentType: 'fast-questions',
-        completedAt: new Date(),
-        score
-      };
-    } else {
-      user.completedAssessments.push({
-        assessmentType: 'fast-questions',
-        completedAt: new Date(),
-        score
-      });
-      user.totalAssessmentsCompleted += 1;
-    }
-    // Update progress
+
+    user.completedAssessments.push({
+      assessmentType: 'fast-question',
+      completedAt: new Date(),
+      score
+    });
+
+    // Calculate total assessments and progress
     const totalAssessments = await Assessment.countDocuments();
+    user.totalAssessmentsCompleted += 1;
     user.progress = Math.min(100, (user.totalAssessmentsCompleted / totalAssessments) * 100);
+
     await user.save();
 
-    // Get updated assessment status for response
-    const availableAssessments = await Assessment.find();
-    const completedAssessmentTypes = user.completedAssessments.map(a => a.assessmentType);
-    const assessmentStatus = availableAssessments.map(assessment => ({
-      type: assessment.category,
-      title: assessment.title,
-      description: assessment.description,
-      completed: completedAssessmentTypes.includes(assessment.category),
-      score: user.completedAssessments.find(a => a.assessmentType === assessment.category)?.score || null
-    }));
+    // Get assessment status
+    const assessment = await Assessment.findOne({ category: 'Fast Question' });
+    const assessmentStatus = {
+      title: assessment?.title || 'Fast Question Assessment',
+      description: assessment?.description || 'Test your problem-solving skills with quick questions',
+      completed: true,
+      score
+    };
 
     res.json({
       message: 'Assessment submitted successfully',
@@ -1185,7 +1254,8 @@ router.post('/submit/fast-questions', authenticateToken, async (req, res) => {
       assessmentStatus
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error submitting fast questions', error: error.message });
+    console.error('Error submitting fast questions assessment:', error);
+    res.status(500).json({ message: 'Error submitting assessment', error: error.message });
   }
 });
 
@@ -1221,10 +1291,6 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
 
 // Create a new assessment (admin only)
 router.post('/', authenticateToken, isAdmin, async (req, res) => {
-  // Debug: Log the Authorization header and user info
-  console.log('Authorization header:', req.headers['authorization']);
-  console.log('Decoded user:', req.user);
-  console.log('Is admin:', req.user && req.user.role === 'admin');
   try {
     const { title, description, category, duration, image } = req.body;
     const newAssessment = new Assessment({
