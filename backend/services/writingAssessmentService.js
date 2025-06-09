@@ -10,7 +10,7 @@ dotenv.config();
 class WritingAssessmentService {
   constructor() {
     // Use the provided OpenRouter API key or fall back to environment variable
-    this.openRouterApiKey = "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";
+    this.openRouterApiKey = "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";
     this.model = "meta-llama/llama-3.3-8b-instruct:free";
     console.log("WritingAssessmentService initialized with model:", this.model);
   }
@@ -51,6 +51,9 @@ Please provide:
 5. Three specific, actionable recommendations for how the student can improve their writing skills based on their performance
 `;
 
+      // Debug log: print the prompt sent to the AI
+      console.log("Prompt sent to AI:", prompt);
+      
       console.log("Preparing to send request to OpenRouter API");
       console.log("API Key (first 5 chars):", this.openRouterApiKey.substring(0, 5) + "...");
       
@@ -96,7 +99,8 @@ Please provide:
 
       // Parse the response to extract scores and feedback
       const aiResponse = response.data.choices[0].message.content;
-      console.log("AI response content (first 100 chars):", aiResponse.substring(0, 100) + "...");
+      // Debug log: print the raw AI response
+      console.log("AI response content:", aiResponse);
       
       // Parse the AI response to extract structured data
       console.log("Parsing AI response...");

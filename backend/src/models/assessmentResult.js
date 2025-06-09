@@ -28,6 +28,7 @@ const assessmentResultSchema = new mongoose.Schema({
 // Index for efficient querying
 assessmentResultSchema.index({ userId: 1, assessmentType: 1 });
 
+
 const AssessmentResult = mongoose.models.AssessmentResult || mongoose.model('AssessmentResult', assessmentResultSchema);
 
 export default AssessmentResult; 

@@ -10,6 +10,7 @@ import {
   getUserLeetCodeAssessments
 } from '../controllers/leetcodeAssessment.controller.js';
 import leetcodeService from '../services/leetcodeService.js';
+import LeetCodeAssessment from '../../models/LeetCodeAssessment.js';
 
 const leetcodeAssessmentRoutes = express.Router();
 
@@ -147,5 +148,29 @@ leetcodeAssessmentRoutes.get('/:assessmentId',
   validateRequest, 
   getLeetCodeAssessment
 );
+
+// One-time fix endpoint to recalculate LeetCode assessment scores for a user
+leetcodeAssessmentRoutes.post('/fix-scores/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const assessments = await LeetCodeAssessment.find({ userId, status: 'completed' });
+    let updated = 0;
+
+    for (const assessment of assessments) {
+      const totalProblems = assessment.assignedProblems.length;
+      const completedProblems = assessment.assignedProblems.filter(p => p.completed).length;
+      const percentageScore = Math.round((completedProblems / totalProblems) * 100);
+      if (assessment.score !== percentageScore) {
+        assessment.score = percentageScore;
+        await assessment.save();
+        updated++;
+      }
+    }
+
+    res.json({ success: true, updated, message: `Updated ${updated} assessments.` });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 export default leetcodeAssessmentRoutes;

@@ -32,7 +32,7 @@ export const getUserProgress = async (req, res) => {
       if (presentationSubmissions.length > 0) {
         results.completedAssessments.push({
           assessmentType: 'Presentation',
-          score: presentationSubmissions[0].score || 0,
+          score: (presentationSubmissions[0].score || 0) * 10,
           completedAt: presentationSubmissions[0].reviewedAt || presentationSubmissions[0].updatedAt,
           status: presentationSubmissions[0].status
         });
@@ -81,13 +81,17 @@ export const getUserProgress = async (req, res) => {
       // Track if we've found any problem solving assessments
       let fastQuestionsFound = false;
       let puzzleGameFound = false;
+      let puzzleGameScore = 0;
+      let puzzleGameCompletedAt = null;
       
       for (const assessment of problemSolvingAssessments) {
         if (assessment.assessmentType === 'puzzle-game' && !puzzleGameFound) {
+          puzzleGameScore = assessment.percentage || assessment.score || 0;
+          puzzleGameCompletedAt = assessment.completedAt;
           results.completedAssessments.push({
             assessmentType: 'Puzzle Game Assessment',
-            score: assessment.score || assessment.percentage || 0,
-            completedAt: assessment.completedAt,
+            score: puzzleGameScore,
+            completedAt: puzzleGameCompletedAt,
             overallScore: assessment.overallScore,
             maxOverallScore: assessment.maxOverallScore
           });
@@ -109,20 +113,24 @@ export const getUserProgress = async (req, res) => {
         if (fastQuestionsFound && puzzleGameFound) break;
       }
 
-      // Fallback: If no completed puzzle-game ProblemSolvingAssessment, check AssessmentResult
-      if (!puzzleGameFound) {
+      // If the found score is 0, check AssessmentResult for a non-zero score
+      if (puzzleGameFound && puzzleGameScore === 0) {
         const AssessmentResult = mongoose.model('AssessmentResult');
         const puzzleResults = await AssessmentResult.find({
           userId: new mongoose.Types.ObjectId(userId),
           assessmentType: 'puzzle-game'
         }).sort({ completedAt: -1 });
         if (puzzleResults.length > 0) {
-          results.completedAssessments.push({
-            assessmentType: 'Puzzle Game Assessment',
-            score: puzzleResults[0].score || 0,
-            completedAt: puzzleResults[0].completedAt
-          });
-          results.totalCompleted++;
+          const arScore = puzzleResults[0].percentage || puzzleResults[0].score || 0;
+          if (arScore > 0) {
+            // Replace the previous entry with the correct score
+            results.completedAssessments = results.completedAssessments.filter(a => a.assessmentType !== 'Puzzle Game Assessment');
+            results.completedAssessments.push({
+              assessmentType: 'Puzzle Game Assessment',
+              score: arScore,
+              completedAt: puzzleResults[0].completedAt
+            });
+          }
         }
       }
     } catch (error) {
@@ -301,4 +309,4 @@ export const getUserProgress = async (req, res) => {
       error: error.message 
     });
   }
-}; 
+};

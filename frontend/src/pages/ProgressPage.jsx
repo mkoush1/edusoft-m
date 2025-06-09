@@ -47,8 +47,30 @@ const ProgressPage = () => {
         }
 
         const progressData = response.data.data;
-        const completedData = progressData.completedAssessments || [];
-        
+        let completedData = progressData.completedAssessments || [];
+
+        // Fetch the latest puzzle-game result
+        let puzzleResult = null;
+        try {
+          const puzzleRes = await api.get(`/assessments/puzzle-game/user/me/results`);
+          if (puzzleRes.data && puzzleRes.data.results && puzzleRes.data.results.length > 0) {
+            const latest = puzzleRes.data.results[0];
+            console.log('DEBUG: Puzzle Game API result:', latest);
+            puzzleResult = {
+              assessmentType: 'puzzle-game',
+              percentage: latest.percentage,
+              score: latest.score,
+              completedAt: latest.completedAt || latest.createdAt
+            };
+            console.log('DEBUG: Puzzle Game score:', latest.score, 'percentage:', latest.percentage);
+          }
+        } catch (e) { /* ignore if fails */ }
+        // Replace or add puzzle-game result in completedData
+        if (puzzleResult) {
+          completedData = completedData.filter(a => a.assessmentType !== 'puzzle-game');
+          completedData.push(puzzleResult);
+        }
+
         // Fetch speaking assessments from backend
         const speakingRes = await AssessmentService.getUserSpeakingAssessments(userId);
         let speakingList = [];
@@ -93,9 +115,22 @@ const ProgressPage = () => {
           }
           return a;
         });
-        setCompletedAssessments(merged);
+        // Normalize: always have a 'percentage' field for all assessment types
+        const normalized = merged.map(a => {
+          let percent = 0;
+          if (a.percentage !== undefined && a.percentage !== null) {
+            percent = a.percentage;
+          } else if (a.score !== undefined && a.score !== null) {
+            percent = a.score;
+          }
+          return {
+            ...a,
+            percentage: percent
+          };
+        });
+        setCompletedAssessments(normalized);
         // Debug log for assessment types
-        console.log('DEBUG: completedAssessments', merged.map(a => a.assessmentType));
+        console.log('DEBUG: completedAssessments', normalized.map(a => a.assessmentType));
         setTotalCompleted(progressData.totalCompleted || 0);
         setTotalAvailable(progressData.totalAvailable || 0);
         setProgress(progressData.progress || 0);
@@ -178,6 +213,7 @@ const ProgressPage = () => {
 
   // Helper to get the best available score for an assessment
   const getDisplayScore = (assessment) => {
+    if (assessment.percentage !== undefined && assessment.percentage !== null) return Number(assessment.percentage);
     if (Number(assessment.overallScore) > 0) return Number(assessment.overallScore);
     if (assessment.parsedSupervisorFeedback?.rawScore > 0) return Number(assessment.parsedSupervisorFeedback.rawScore);
     if (assessment.score > 0) return Number(assessment.score);
@@ -424,7 +460,7 @@ const ProgressPage = () => {
                           Completed
                         </span>
                         <span className="text-lg sm:text-xl font-semibold text-[#592538]">
-                          {getDisplayScore(assessment) > 0
+                          {getDisplayScore(assessment) !== null && getDisplayScore(assessment) !== undefined
                             ? `${Math.round(getDisplayScore(assessment))}%`
                             : 'Pending'}
                         </span>

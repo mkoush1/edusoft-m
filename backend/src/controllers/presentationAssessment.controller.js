@@ -822,7 +822,7 @@ export const evaluateSubmission = async (req, res) => {
         };
         
         // Calculate overall score as average of the three criteria
-        const overallScore = calculateAverageScore(criteriaScores);
+        const overallScore = calculateAverageScore(criteriaScores) * 10;
         
         // Update the submission
         submission.criteriaScores = criteriaScores;

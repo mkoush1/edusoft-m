@@ -162,7 +162,7 @@ const AssessmentsPage = () => {
           .map(a => ({
             _id: a._id,
             assessmentType: a.category,
-            score: a.score || 0,
+            score: (a.score || 0) * 10,
             completedAt: a.completedAt || new Date().toISOString()
           }));
           

@@ -91,7 +91,7 @@ const AssessmentResultsFast = () => {
           Fast Questions Assessment Result
         </h1>
         <div className="flex flex-col items-center mb-6">
-          <div className="text-5xl font-extrabold text-[#592538] mb-2">{score} / {totalQuestions}</div>
+          <div className="text-5xl font-extrabold text-[#592538] mb-2">{percent}%</div>
           <div className="text-lg text-gray-700 mb-2">{summary}</div>
         </div>
         {canRetake ? (

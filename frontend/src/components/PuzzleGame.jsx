@@ -19,6 +19,8 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
   const [isTimeUp, setIsTimeUp] = useState(false);
   const [score, setScore] = useState(0);
   const [scoreMessage, setScoreMessage] = useState('');
+  const [canRetake, setCanRetake] = useState(false);
+  const [retakeMessage, setRetakeMessage] = useState("");
 
   useEffect(() => {
     // Use the correct initial value based on timeSpent
@@ -332,6 +334,31 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
     // eslint-disable-next-line
   }, []);
 
+  // Fetch retake eligibility after completion
+  useEffect(() => {
+    if (puzzle?.isCompleted || isTimeUp) {
+      const checkRetake = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const res = await axios.get('http://localhost:5000/api/assessments/puzzle-game/user/me/results', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (res.data && res.data.canRetake !== undefined) {
+            setCanRetake(res.data.canRetake);
+            setRetakeMessage(res.data.retakeMessage || "");
+          } else {
+            setCanRetake(false);
+            setRetakeMessage("");
+          }
+        } catch (err) {
+          setCanRetake(false);
+          setRetakeMessage("Unable to check retake eligibility.");
+        }
+      };
+      checkRetake();
+    }
+  }, [puzzle?.isCompleted, isTimeUp]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
@@ -443,6 +470,18 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
             }`}>
               {scoreMessage}
             </p>
+            {canRetake ? (
+              <button
+                onClick={() => navigate('/assessment/quiz/puzzle-game')}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 mr-2"
+              >
+                Retake Assessment
+              </button>
+            ) : retakeMessage ? (
+              <div className="mb-4 text-yellow-700 bg-yellow-100 rounded-lg px-4 py-2 text-center">
+                {retakeMessage}
+              </div>
+            ) : null}
             <div className="flex justify-center space-x-4">
               <button
                 onClick={() => navigate('/dashboard')}

@@ -115,7 +115,7 @@ const AssessmentStatus = ({ userId, status: propStatus }) => {
               <Box mt={2}>
                 {status.completedAssessments.map((assessment, index) => (
                   <Typography key={index} variant="body2">
-                    • {assessment.assessmentType} - {Math.round(assessment.score)}%
+                    • {assessment.assessmentType} - {Math.round(assessment.score * 10)}%
                   </Typography>
                 ))}
               </Box>

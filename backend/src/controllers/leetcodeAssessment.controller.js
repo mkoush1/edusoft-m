@@ -416,16 +416,16 @@ export const checkProblemStatus = async (req, res) => {
     problem.completed = true;
     problem.completedAt = new Date();
 
-    // Calculate new score (1 point for Easy, 2 for Medium, 3 for Hard)
-    const difficultyScores = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
-    const newScore = assessment.score + (difficultyScores[problem.difficulty] || 1);
+    // Calculate percentage score based on completed problems
+    const totalCompleted = assessment.assignedProblems.filter(p => p.completed || p._id.toString() === problem._id.toString()).length;
+    const totalProblems = assessment.assignedProblems.length;
+    const percentageScore = Math.round((totalCompleted / totalProblems) * 100);
+    assessment.score = percentageScore;
     
     // Check if all problems are completed
-    const allCompleted = assessment.assignedProblems.every(p => 
-      p._id.toString() === problem._id.toString() ? true : p.completed
-    );
+    const allCompleted = totalCompleted === totalProblems;
 
-    console.log(`Updating assessment. New score: ${newScore}, All completed: ${allCompleted}`);
+    console.log(`Updating assessment. New score: ${percentageScore}, All completed: ${allCompleted}`);
 
     try {
       // Find the problem index in the array
@@ -443,7 +443,7 @@ export const checkProblemStatus = async (req, res) => {
       assessment.assignedProblems[problemIndex].completedAt = new Date();
       
       // Update other assessment fields
-      assessment.score = newScore;
+      assessment.score = percentageScore;
       assessment.status = allCompleted ? 'completed' : 'in_progress';
       if (allCompleted) {
         assessment.completedAt = new Date();
