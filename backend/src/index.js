@@ -17,6 +17,7 @@ import readingAssessmentRoutes from './routes/readingAssessmentRoutes.js';
 import communicationRoutes from './routes/communicationRoutes.js';
 import leetcodeAssessmentRoutes from './routes/leetcodeAssessment.routes.js';
 import supervisorRoutes from '../routes/supervisor.route.js';
+import progressRoutes from './routes/progressRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -71,6 +72,7 @@ app.use('/api/cloudinary', cloudinaryRoutes);
 app.use('/api/communication', communicationRoutes);
 app.use('/api/assessments/leetcode', leetcodeAssessmentRoutes);
 app.use('/api/supervisors', supervisorRoutes);
+app.use('/api/progress', progressRoutes);
 
 // Connect to MongoDB
 const connectDB = async () => {

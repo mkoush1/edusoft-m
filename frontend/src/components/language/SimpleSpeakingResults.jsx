@@ -114,31 +114,6 @@ const SimpleSpeakingResults = ({ results, onBack }) => {
       <div className="p-4">
         <h3 className="text-base font-medium mb-4">Assessment Results</h3>
         
-        {/* Supervisor Evaluation */}
-        <div className="mb-6 border border-green-200 rounded-lg bg-green-50 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            <span className="font-medium text-green-800">Supervisor Evaluation</span>
-          </div>
-          
-          <div className="flex items-start mb-4">
-            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center mr-4 border border-green-100 shadow-sm">
-              <div className="text-lg font-bold text-[#592538]">{supervisorScore}/9</div>
-            </div>
-            
-            <div>
-              <div className="text-sm text-gray-700 font-medium">Expert Assessment</div>
-              <div className="text-xs text-gray-500">Evaluated on {formattedDate}</div>
-            </div>
-          </div>
-          
-          <div className="border-t border-green-100 pt-3">
-            <p className="text-gray-700">{supervisorFeedback}</p>
-          </div>
-        </div>
-
         {/* Check for updates button - only show for pending assessments */}
         {currentResults.status === 'pending' && currentResults.assessmentId && (
           <div className="mb-6 text-center">

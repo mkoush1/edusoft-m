@@ -585,12 +585,15 @@ const WritingAssessment = ({ onComplete, level, language, onBack }) => {
         const assessmentServiceModule = await import('../../services/assessment.service');
         const AssessmentService = assessmentServiceModule.default;
         
-        // Submit the assessment to the server
+        // Check if score is over 100 and fix it before submitting
+        const correctedScore = overallScore > 100 ? Math.round(overallScore / 2) : overallScore;
+        
+        // Submit the assessment to the server with corrected score
         const submissionResponse = await AssessmentService.submitAssessment({
           type: 'writing',
           level,
           language,
-          score: overallScore,
+          score: correctedScore,
           tasks: [taskWithResponse],
           feedback: overallFeedback,
           recommendations: recommendations
@@ -605,8 +608,8 @@ const WritingAssessment = ({ onComplete, level, language, onBack }) => {
           results.serverScore = submissionResponse.result.calculatedScore || submissionResponse.result.score;
           
           // Log any discrepancy between client and server calculated scores
-          if (results.serverScore !== overallScore) {
-            console.log(`Score discrepancy between client (${overallScore}%) and server (${results.serverScore}%)`);
+          if (results.serverScore !== correctedScore) {
+            console.log(`Score discrepancy between client (${correctedScore}%) and server (${results.serverScore}%)`);
           }
         }
       } catch (dbError) {

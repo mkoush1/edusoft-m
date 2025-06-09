@@ -127,6 +127,8 @@ listeningAssessmentSchema.statics.canTakeAssessment = async function(userId, lev
 listeningAssessmentSchema.index({ userId: 1, level: 1, language: 1 });
 listeningAssessmentSchema.index({ userId: 1, completedAt: -1 });
 
-const ListeningAssessment = mongoose.model('ListeningAssessment', listeningAssessmentSchema);
+// Use existing model if it exists, otherwise create a new one
+const ListeningAssessment = mongoose.models.ListeningAssessment || 
+  mongoose.model('ListeningAssessment', listeningAssessmentSchema);
 
 export default ListeningAssessment; 

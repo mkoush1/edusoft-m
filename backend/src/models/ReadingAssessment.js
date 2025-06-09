@@ -63,6 +63,7 @@ const ReadingAssessmentSchema = new Schema({
 
 // Create index for efficient querying
 ReadingAssessmentSchema.index({ user: 1, level: 1, language: 1 });
+ReadingAssessmentSchema.index({ user: 1, completedAt: -1 });
 
 // Static method that can be called without creating an instance
 ReadingAssessmentSchema.statics.canTakeAssessment = async function(userId, level, language) {
@@ -117,6 +118,8 @@ ReadingAssessmentSchema.statics.canTakeAssessment = async function(userId, level
   }
 };
 
-// Create and export the model
-const ReadingAssessment = mongoose.model('ReadingAssessment', ReadingAssessmentSchema);
+// Use existing model if it exists, otherwise create a new one
+const ReadingAssessment = mongoose.models.ReadingAssessment || 
+  mongoose.model('ReadingAssessment', ReadingAssessmentSchema);
+
 export default ReadingAssessment; 

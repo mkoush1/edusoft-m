@@ -10,7 +10,7 @@ dotenv.config();
 class WritingAssessmentService {
   constructor() {
     // Use the provided OpenRouter API key or fall back to environment variable
-    this.openRouterApiKey = process.env.OPENROUTER_API_KEY || "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";
+    this.openRouterApiKey = process.env.OPENROUTER_API_KEY || "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";
     this.model = "meta-llama/llama-3.3-8b-instruct:free";
     
     // Flag to use mock responses as fallback when API fails
@@ -164,34 +164,33 @@ Please provide:
     // Apply penalties for minimal responses
     const isVeryMinimal = wordCount < 10;
     
-    // Base scores adjusted by text metrics - scaled to 20 instead of 10
-    let coherenceScore = Math.min(7, 2 + (paragraphCount > 1 ? 2 : 0) + (sentenceCount > 5 ? 2 : 0));
-    let organizationScore = Math.min(7, 2 + (paragraphCount >= 3 ? 3 : paragraphCount));
-    let focusScore = Math.min(7, 2 + Math.min(3, wordCount / 50));
-    let vocabularyScore = Math.min(7, 2 + (avgSentenceLength > 8 ? 3 : 1) + this.calculateVocabularyVariety(answer));
-    let grammarScore = Math.min(7, 3 + (sentenceCount > 5 ? 2 : 0));
+    // Base scores adjusted by text metrics - directly on 20-point scale
+    let coherenceScore = Math.min(14, 4 + (paragraphCount > 1 ? 4 : 0) + (sentenceCount > 5 ? 4 : 0));
+    let organizationScore = Math.min(14, 4 + (paragraphCount >= 3 ? 6 : paragraphCount * 2));
+    let focusScore = Math.min(14, 4 + Math.min(6, wordCount / 25));
+    let vocabularyScore = Math.min(14, 4 + (avgSentenceLength > 8 ? 6 : 2) + this.calculateVocabularyVariety(answer) * 2);
+    let grammarScore = Math.min(14, 6 + (sentenceCount > 5 ? 4 : 0));
     
     // Penalty for very minimal responses
     if (isVeryMinimal) {
-      coherenceScore = Math.min(coherenceScore, 3);
-      organizationScore = Math.min(organizationScore, 2);
-      focusScore = Math.min(focusScore, 2);
-      vocabularyScore = Math.min(vocabularyScore, 2);
-      grammarScore = Math.min(grammarScore, 3);
+      coherenceScore = Math.min(coherenceScore, 6);
+      organizationScore = Math.min(organizationScore, 4);
+      focusScore = Math.min(focusScore, 4);
+      vocabularyScore = Math.min(vocabularyScore, 4);
+      grammarScore = Math.min(grammarScore, 6);
     }
     
-    // Scale scores from 0-10 to 0-20
-    coherenceScore = coherenceScore * 2;
-    organizationScore = organizationScore * 2;
-    focusScore = focusScore * 2;
-    vocabularyScore = vocabularyScore * 2;
-    grammarScore = grammarScore * 2;
-    
     // Calculate overall score (out of 100)
-    const overallScore = Math.round((coherenceScore + organizationScore + focusScore + vocabularyScore + grammarScore));
+    const overallScore = Math.min(100, Math.round((coherenceScore + organizationScore + focusScore + vocabularyScore + grammarScore)));
     
     // Generate appropriate feedback
     const feedback = this.generateFeedback(wordCount, paragraphCount, overallScore);
+    
+    // Clean up feedback text
+    const cleanFeedback = (text) => {
+      if (!text) return '';
+      return text.replace(/^\d+\.\s+/, ''); // Remove numbered prefixes
+    };
     
     // Create assessment object
     return {
@@ -199,52 +198,52 @@ Please provide:
         {
           name: 'Coherence and Clarity',
           score: coherenceScore,
-          feedback: isVeryMinimal 
+          feedback: cleanFeedback(isVeryMinimal 
             ? 'The response is too brief to fully evaluate coherence. Consider developing your ideas more fully with clear connections between them.' 
             : coherenceScore > 10 
               ? 'Your ideas generally flow logically and are mostly clear to follow.' 
-              : 'Work on creating clearer connections between your ideas and ensuring your writing flows logically.'
+              : 'Work on creating clearer connections between your ideas and ensuring your writing flows logically.')
         },
         {
           name: 'Organization and Structure',
           score: organizationScore,
-          feedback: isVeryMinimal 
+          feedback: cleanFeedback(isVeryMinimal 
             ? 'The response is too brief to demonstrate proper organization. A more developed structure with introduction, body, and conclusion is needed.' 
             : organizationScore > 10 
               ? 'Your writing shows decent organization with a recognizable structure.' 
-              : 'Focus on creating a clearer structure with an introduction, well-developed body paragraphs, and a conclusion.'
+              : 'Focus on creating a clearer structure with an introduction, well-developed body paragraphs, and a conclusion.')
         },
         {
           name: 'Focus and Content Development',
           score: focusScore,
-          feedback: isVeryMinimal 
+          feedback: cleanFeedback(isVeryMinimal 
             ? 'The response lacks sufficient content to demonstrate focus on the topic. More development is needed to address the prompt fully.' 
             : focusScore > 10 
               ? 'You stay on topic and provide some relevant details to support your points.' 
-              : 'Work on developing your ideas more fully with specific examples and details that address the prompt directly.'
+              : 'Work on developing your ideas more fully with specific examples and details that address the prompt directly.')
         },
         {
           name: 'Vocabulary and Word Choice',
           score: vocabularyScore,
-          feedback: isVeryMinimal 
+          feedback: cleanFeedback(isVeryMinimal 
             ? 'The response contains very limited vocabulary. Expand your word choices to demonstrate a broader lexical range.' 
             : vocabularyScore > 10 
               ? 'You use a reasonable range of vocabulary appropriate to the topic.' 
-              : 'Try to use more precise and varied vocabulary to express your ideas more effectively.'
+              : 'Try to use more precise and varied vocabulary to express your ideas more effectively.')
         },
         {
           name: 'Grammar and Conventions',
           score: grammarScore,
-          feedback: isVeryMinimal 
+          feedback: cleanFeedback(isVeryMinimal 
             ? 'The limited text makes it difficult to fully assess grammar. Focus on writing complete, grammatically correct sentences.' 
             : grammarScore > 10 
               ? 'Your grammar is generally accurate with some minor errors that don\'t impede understanding.' 
-              : 'Focus on improving your grammar accuracy, particularly with sentence structure and verb tenses.'
+              : 'Focus on improving your grammar accuracy, particularly with sentence structure and verb tenses.')
         }
       ],
       overallScore: overallScore,
       overallFeedback: feedback.overall,
-      recommendations: feedback.recommendations,
+      recommendations: feedback.recommendations.map(rec => cleanFeedback(rec)),
       isAiGenerated: false,
       isMockData: true
     };
@@ -258,7 +257,7 @@ Please provide:
   getSimplifiedAssessment(answer) {
     console.log("Generating simplified assessment for very short answer");
     
-    // For extremely minimal responses - using scores out of 20 now
+    // For extremely minimal responses - using scores directly out of 20
     return {
       criteria: [
         {
@@ -460,10 +459,18 @@ Please provide:
         }
       }
       
-      // Scale scores from 0-10 to 0-20 for display in frontend
+      // Ensure scores are in the proper 20-point scale
       assessment.criteria.forEach(criterion => {
+        // Convert any scores from 10-point scale to 20-point scale if needed
         if (criterion.score > 0 && criterion.score <= 10) {
-          criterion.score = criterion.score * 2;
+          criterion.score = criterion.score * 2; // Scale up if AI provided scores on 10-point scale
+        }
+        
+        // Validate the score range
+        if (criterion.score < 0) {
+          criterion.score = 0;
+        } else if (criterion.score > 20) {
+          criterion.score = 20;
         }
       });
       
@@ -474,7 +481,7 @@ Please provide:
       } else {
         // Calculate as sum of criteria scores
         const sum = assessment.criteria.reduce((acc, criterion) => acc + criterion.score, 0);
-        assessment.overallScore = sum; // Total score out of 100
+        assessment.overallScore = Math.min(100, sum); // Cap at 100, sum of all criteria scores
         console.log("Calculated overall score:", assessment.overallScore);
       }
       
@@ -542,8 +549,15 @@ Please provide:
       if (!assessment.overallScore || assessment.overallScore < 0 || assessment.overallScore > 100) {
         console.log("Invalid overall score, recalculating");
         const sum = assessment.criteria.reduce((acc, criterion) => acc + criterion.score, 0);
-        assessment.overallScore = sum; // Sum of all criteria scores
+        assessment.overallScore = Math.min(100, sum); // Cap at 100, sum of all criteria scores
       }
+      
+      // Clean up any numbered prefixes from feedback
+      assessment.criteria.forEach(criterion => {
+        if (criterion.feedback) {
+          criterion.feedback = criterion.feedback.replace(/^\d+\.\s+/, '');
+        }
+      });
       
       return assessment;
     } catch (error) {

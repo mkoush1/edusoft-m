@@ -84,6 +84,10 @@ const SpeakingAssessmentSchema = new mongoose.Schema({
       nextDate.setDate(nextDate.getDate() + 7);
       return nextDate;
     }
+  },
+  overallScore: {
+    type: Number,
+    default: null
   }
 }, {
   timestamps: true
@@ -217,6 +221,7 @@ class SpeakingAssessmentTrackerService {
         existingAssessment.videoUrl = assessmentData.videoUrl;
         existingAssessment.publicId = assessmentData.publicId;
         existingAssessment.score = assessmentData.score || existingAssessment.score;
+        existingAssessment.overallScore = assessmentData.overallScore !== undefined ? assessmentData.overallScore : (assessmentData.score !== undefined ? assessmentData.score : existingAssessment.overallScore);
         existingAssessment.feedback = assessmentData.feedback || existingAssessment.feedback;
         existingAssessment.transcribedText = assessmentData.transcribedText || existingAssessment.transcribedText;
         existingAssessment.status = assessmentData.status || existingAssessment.status;
@@ -228,7 +233,10 @@ class SpeakingAssessmentTrackerService {
         console.log(`No existing assessment found for user ${assessmentData.userId}, creating new...`);
         
         // Create new assessment record
-        const assessment = new SpeakingAssessment(assessmentData);
+        const assessment = new SpeakingAssessment({
+          ...assessmentData,
+          overallScore: assessmentData.overallScore !== undefined ? assessmentData.overallScore : assessmentData.score
+        });
         
         // Log assessment document before saving
         console.log('New assessment document:', {

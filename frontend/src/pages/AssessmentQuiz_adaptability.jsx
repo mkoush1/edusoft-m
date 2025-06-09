@@ -116,7 +116,7 @@ const AssessmentQuizAdaptability = () => {
           JSON.stringify(response.data.result.assessmentStatus)
         );
       }
-      navigate("/dashboard");
+      navigate("/assessment/results/adaptability");
     } catch (error) {
       console.error("[DEBUG] Error submitting assessment:", error);
       setError("Failed to submit assessment. Please try again.");

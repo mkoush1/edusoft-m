@@ -65,6 +65,8 @@ const writingAssessmentSchema = new mongoose.Schema({
 writingAssessmentSchema.index({ userId: 1, level: 1, language: 1 });
 writingAssessmentSchema.index({ userId: 1, completedAt: -1 });
 
-const WritingAssessment = mongoose.model('WritingAssessment', writingAssessmentSchema);
+// Use existing model if it exists, otherwise create a new one
+const WritingAssessment = mongoose.models.WritingAssessment || 
+  mongoose.model('WritingAssessment', writingAssessmentSchema);
 
 export default WritingAssessment; 

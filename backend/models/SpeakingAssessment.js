@@ -1,10 +1,16 @@
 import mongoose from 'mongoose';
 
-const listeningAssessmentSchema = new mongoose.Schema({
+const speakingAssessmentSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  userName: {
+    type: String
+  },
+  userEmail: {
+    type: String
   },
   level: {
     type: String,
@@ -16,47 +22,65 @@ const listeningAssessmentSchema = new mongoose.Schema({
     required: true,
     enum: ['english', 'french']
   },
+  taskId: {
+    type: Number
+  },
+  videoUrl: {
+    type: String
+  },
+  publicId: {
+    type: String
+  },
   score: {
+    type: Number
+  },
+  overallScore: {
     type: Number,
-    required: true
-  },
-  correctAnswers: {
-    type: Number,
-    required: true
-  },
-  totalQuestions: {
-    type: Number,
-    required: true
-  },
-  answers: {
-    type: [mongoose.Schema.Types.Mixed],
-    default: []
-  },
-  // For multiple choice questions
-  mcqAnswers: {
-    type: Map,
-    of: Number,
-    default: {}
-  },
-  // For fill-in-the-blanks
-  fillBlanksAnswers: {
-    type: Map,
-    of: String,
-    default: {}
-  },
-  // For true/false tasks
-  trueFalseAnswers: {
-    type: Map,
-    of: Boolean,
-    default: {}
-  },
-  // For phrase matching tasks
-  phraseMatchingAnswers: {
-    type: Map,
-    of: String,
-    default: {}
+    default: 70 // Default value to prevent validation errors
   },
   feedback: {
+    type: String
+  },
+  transcribedText: {
+    type: String
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'evaluated', 'rejected'],
+    default: 'pending'
+  },
+  supervisorId: {
+    type: String
+  },
+  supervisorScore: {
+    type: Number
+  },
+  supervisorFeedback: {
+    type: String
+  },
+  evaluatedAt: {
+    type: Date
+  },
+  criteria: [{
+    name: {
+      type: String,
+      required: true
+    },
+    score: {
+      type: Number,
+      required: true
+    },
+    feedback: {
+      type: String
+    }
+  }],
+  recommendations: [{
+    type: String
+  }],
+  overallFeedback: {
+    type: String
+  },
+  audioUrl: {
     type: String
   },
   completedAt: {
@@ -75,7 +99,7 @@ const listeningAssessmentSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Add static method to check if a user can take an assessment
-listeningAssessmentSchema.statics.canTakeAssessment = async function(userId, level, language) {
+speakingAssessmentSchema.statics.canTakeAssessment = async function(userId, level, language) {
   try {
     // Find the most recent assessment for this user, level, and language
     const recentAssessment = await this.findOne({
@@ -110,11 +134,11 @@ listeningAssessmentSchema.statics.canTakeAssessment = async function(userId, lev
       available: false,
       message: `You must wait until ${nextAvailableDate.toLocaleDateString()} before taking this assessment again.`,
       nextAvailableDate,
-      previousScore: recentAssessment.score,
+      previousScore: recentAssessment.overallScore,
       previousAssessment: {
         completedAt: recentAssessment.completedAt,
-        score: recentAssessment.score,
-        feedback: recentAssessment.feedback
+        score: recentAssessment.overallScore,
+        feedback: recentAssessment.overallFeedback
       }
     };
   } catch (error) {
@@ -124,11 +148,11 @@ listeningAssessmentSchema.statics.canTakeAssessment = async function(userId, lev
 };
 
 // Indexes for efficient querying
-listeningAssessmentSchema.index({ userId: 1, level: 1, language: 1 });
-listeningAssessmentSchema.index({ userId: 1, completedAt: -1 });
+speakingAssessmentSchema.index({ userId: 1, level: 1, language: 1 });
+speakingAssessmentSchema.index({ userId: 1, completedAt: -1 });
 
 // Use existing model if it exists, otherwise create a new one
-const ListeningAssessment = mongoose.models.ListeningAssessment || 
-  mongoose.model('ListeningAssessment', listeningAssessmentSchema);
+const SpeakingAssessment = mongoose.models.SpeakingAssessment || 
+  mongoose.model('SpeakingAssessment', speakingAssessmentSchema);
 
-export default ListeningAssessment; 
+export default SpeakingAssessment; 

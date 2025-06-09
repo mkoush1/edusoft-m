@@ -69,6 +69,8 @@ class ReadingAssessmentService {
    */
   async getAssessmentData(level, language) {
     try {
+      console.log(`Fetching reading assessment data for ${level} level in ${language} language`);
+      
       const response = await this.api.get('/data', {
         params: { level, language }
       });
@@ -77,15 +79,18 @@ class ReadingAssessmentService {
       
       // Check if the response has the expected structure
       if (response.data && response.data.success === true && response.data.data) {
+        console.log('Successfully received reading assessment data from API');
         return response.data.data;
       } else if (response.data && response.data.success === false) {
         console.warn('API returned success: false for reading assessment data');
         throw new Error(response.data.message || 'Failed to get reading assessment data');
       } else {
+        console.log('Received reading assessment data with unexpected structure, using as is');
         return response.data; // Return whatever data we got
       }
     } catch (error) {
       console.error('Error getting reading assessment data:', error);
+      console.log('Falling back to local assessment data');
       // Return local fallback data
       return this.getLocalAssessmentData(level, language);
     }

@@ -1409,17 +1409,9 @@ const SpeakingAssessment = ({ onComplete, level, language, onBack }) => {
           
           {existingAssessment && (
             <div className="border border-gray-200 rounded-lg p-4 mb-6 mx-auto text-left">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-lg font-medium">Your Previous Results</h3>
-                <div className="text-xl font-bold text-[#592538]">{scoreToDisplay}%</div>
-              </div>
-              <p className="text-sm text-gray-500 mb-2">
-                {existingAssessment.status === 'evaluated' ? 'Evaluated by supervisor' : 'Pending supervisor review'}
-              </p>
-              
               {/* Overall Supervisor Feedback */}
               {supervisorFeedbackText && (
-                <div className="mt-4 mb-4">
+                <div className="mt-0 mb-4">
                   <div className="font-medium text-[#592538]">Supervisor Feedback:</div>
                   <p className="italic text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100 mt-1">
                     {supervisorFeedbackText}

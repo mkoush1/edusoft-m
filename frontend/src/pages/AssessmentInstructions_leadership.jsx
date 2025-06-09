@@ -1,11 +1,51 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { decodeJWT } from '../utils/jwt';
+import api from '../services/api';
 
 const AssessmentInstructionsLeadership = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [canTake, setCanTake] = useState(false);
+  const [cooldownMsg, setCooldownMsg] = useState("");
+
+  useEffect(() => {
+    const checkEligibility = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const decoded = decodeJWT(token);
+        const userId = decoded?.userId;
+        if (!userId) return;
+        const res = await api.get(`/assessments/status/${userId}`);
+        const completed = res.data?.data?.assessments?.find(a => a.category === 'leadership');
+        if (completed && completed.completedAt) {
+          const completedAt = new Date(completed.completedAt);
+          const now = new Date();
+          const diff = (now - completedAt) / (1000 * 60 * 60 * 24);
+          if (diff >= 7) {
+            setCanTake(true);
+            setCooldownMsg("");
+          } else {
+            setCanTake(false);
+            const nextRetake = new Date(completedAt);
+            nextRetake.setDate(completedAt.getDate() + 7);
+            const daysLeft = Math.ceil((nextRetake - now) / (1000 * 60 * 60 * 24));
+            setCooldownMsg(`You can retake this assessment in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} (on ${nextRetake.toLocaleDateString()})`);
+          }
+        } else {
+          setCanTake(true);
+          setCooldownMsg("");
+        }
+      } catch (err) {
+        setCanTake(false);
+        setCooldownMsg("");
+      }
+    };
+    checkEligibility();
+  }, []);
 
   const handleStartAssessment = async () => {
     setLoading(true);
@@ -97,9 +137,14 @@ const AssessmentInstructionsLeadership = () => {
             </ul>
           </div>
         </div>
-        {/* Action Buttons */}
+        {/* Action Buttons & Cooldown/Result Logic */}
         {error && (
           <div className="mb-4 text-red-600 text-center">{error}</div>
+        )}
+        {cooldownMsg && !canTake && (
+          <div className="mb-4 text-yellow-700 bg-yellow-100 rounded-lg px-4 py-2 text-center">
+            {cooldownMsg}
+          </div>
         )}
         <div className="flex flex-wrap gap-4">
           <button
@@ -109,13 +154,22 @@ const AssessmentInstructionsLeadership = () => {
           >
             Back to Dashboard
           </button>
-          <button
-            onClick={handleStartAssessment}
-            className="flex-1 px-6 py-3 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300"
-            disabled={loading}
-          >
-            {loading ? "Starting..." : "Start Assessment"}
-          </button>
+          {canTake ? (
+            <button
+              onClick={handleStartAssessment}
+              className="flex-1 px-6 py-3 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300"
+              disabled={loading}
+            >
+              {loading ? "Starting..." : "Start Assessment"}
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate("/assessment/leadership/recommendations")}
+              className="flex-1 px-6 py-3 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300"
+            >
+              View Result
+            </button>
+          )}
         </div>
       </div>
     </div>

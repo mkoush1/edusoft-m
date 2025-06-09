@@ -41,8 +41,7 @@ const ReadingAssessment = ({ onComplete, level, language, onBack }) => {
         loadAssessmentData();
       } catch (error) {
         console.error("Error checking assessment availability:", error);
-        // Only load assessment data if the error is related to the availability check itself
-        // Don't bypass the cooldown check due to an error
+        // Proceed with loading assessment data even if availability check fails
         loadAssessmentData();
       }
     };
@@ -50,7 +49,10 @@ const ReadingAssessment = ({ onComplete, level, language, onBack }) => {
     // Load assessment data based on language and level
     const loadAssessmentData = async () => {
       try {
+        console.log(`Loading reading assessment data for ${level} level in ${language} language`);
         setLoading(true);
+        
+        // Try to get data from the service
         const response = await readingAssessmentService.getAssessmentData(level, language);
         
         console.log("Reading assessment API response:", response);
@@ -112,9 +114,42 @@ const ReadingAssessment = ({ onComplete, level, language, onBack }) => {
         // Set timer based on level
         setTimeLeft(assessmentContent.timeLimit || getTimeLimitByLevel(level));
         
+        // Special handling to ensure data is loaded for all levels
+        console.log(`Handling ${level} level reading assessment`);
+        
         setLoading(false);
       } catch (error) {
         console.error("Error loading reading assessment data:", error);
+        
+        // Try to use local fallback data
+        console.log("Attempting to use local fallback data for reading assessment");
+        const fallbackData = readingAssessmentService.getLocalAssessmentData(level, language);
+        
+        if (fallbackData) {
+          console.log("Using fallback data:", fallbackData);
+          setAssessmentData(fallbackData);
+          
+          // Initialize answers based on fallback data
+          if (fallbackData.multipleChoiceQuestions) {
+            const initialMCAnswers = {};
+            fallbackData.multipleChoiceQuestions.forEach((q, index) => {
+              initialMCAnswers[index] = null;
+            });
+            setMultipleChoiceAnswers(initialMCAnswers);
+          }
+          
+          if (fallbackData.trueFalseQuestions) {
+            const initialTFAnswers = {};
+            fallbackData.trueFalseQuestions.forEach((q, index) => {
+              initialTFAnswers[index] = null;
+            });
+            setTrueFalseAnswers(initialTFAnswers);
+          }
+          
+          // Set timer based on level
+          setTimeLeft(fallbackData.timeLimit || getTimeLimitByLevel(level));
+        }
+        
         setLoading(false);
       }
     };

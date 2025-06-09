@@ -391,6 +391,11 @@ time.`;
         if (level === 'b2') {
           console.log("Special handling for B2 level");
           setHasPlayed(true); // Auto-start the assessment for B2 level
+        } else {
+          // For all other levels, ensure data is loaded properly
+          console.log(`Handling ${level} level`);
+          // Auto-start assessment for all levels to ensure data is loaded
+          setHasPlayed(true);
         }
         
         if (data && data.questions && data.questions.length > 0) {
@@ -1219,27 +1224,63 @@ time.`;
     // Check if classification task is complete (if it exists)
     const classificationTask = getClassificationTask();
     const classificationComplete = !classificationTask || 
-      Object.values(classificationAnswers).every(categoryId => categoryId !== null);
+      Object.values(classificationAnswers).length === classificationTask.items.length;
     
     // Check if categorization task is complete (if it exists)
     const categorization = getCategorization();
     const categorizationComplete = !categorization || 
-      Object.values(categorizationAnswers).every(categoryId => categoryId !== null);
+      Object.values(categorizationAnswers).length === categorization.items.length;
     
     // Check if fill-in-the-blanks task is complete (if it exists)
     const fillBlanksTask = getFillBlanksTask();
-    const fillBlanksComplete = !fillBlanksTask || 
-      Object.values(fillBlanksAnswers).every(answer => answer.trim() !== "");
+    let fillBlanksComplete = true;
+    
+    if (fillBlanksTask) {
+      // For B1 level with 6 sentences
+      if (level === 'b1' && fillBlanksTask.sentences && fillBlanksTask.sentences.length === 6) {
+        const filledAnswers = Object.values(fillBlanksAnswers).filter(answer => answer && answer.trim() !== "");
+        fillBlanksComplete = filledAnswers.length === fillBlanksTask.sentences.length;
+      } else {
+        // For other levels
+        fillBlanksComplete = !fillBlanksTask || 
+          Object.keys(fillBlanksAnswers).length === fillBlanksTask.sentences.length && 
+          Object.values(fillBlanksAnswers).every(answer => answer && answer.trim() !== "");
+      }
+    }
     
     // Check if true/false task is complete (if it exists)
     const trueFalseTask = getTrueFalseTask();
     const trueFalseComplete = !trueFalseTask || 
-      Object.values(trueFalseAnswers).every(answer => answer !== null);
+      Object.keys(trueFalseAnswers).length === trueFalseTask.items.length;
     
     // Check if phrase matching task is complete (if it exists)
     const phraseMatchingTask = getPhraseMatchingTask();
     const phraseMatchingComplete = !phraseMatchingTask || 
-      Object.values(phraseMatchingAnswers).every(answer => answer.trim() !== "");
+      Object.keys(phraseMatchingAnswers).length === phraseMatchingTask.items.length;
+    
+    // Log validation results for debugging
+    console.log({
+      level,
+      mcqAnswered,
+      orderingComplete,
+      classificationComplete,
+      categorizationComplete,
+      fillBlanksComplete,
+      trueFalseComplete,
+      phraseMatchingComplete,
+      trueFalseAnswers
+    });
+    
+    // For B1 level, force enable the submit button if all fill blanks are completed
+    if (level === 'b1' && fillBlanksTask && fillBlanksComplete) {
+      return true;
+    }
+    
+    // For B2 level, force enable the submit button if all true/false questions are answered
+    if (level === 'b2' && trueFalseTask && trueFalseComplete) {
+      console.log("B2 level with all true/false questions answered - enabling submit button");
+      return true;
+    }
     
     return mcqAnswered && orderingComplete && classificationComplete && 
            categorizationComplete && fillBlanksComplete && 
@@ -1353,7 +1394,7 @@ time.`;
     try {
       // Prepare data for backend submission
       const submissionData = {
-        level,
+        level,  // This is the original assessment level (e.g., 'b1')
         language,
         score: finalScore.percentage,
         correctAnswers: finalScore.correct,
@@ -1365,6 +1406,10 @@ time.`;
           acc[idx] = val;
           return acc;
         }, {}),
+        // Explicitly include the original assessment level to ensure it's preserved
+        assessmentLevel: level,
+        achievedLevel: results.cefr.achieved,
+        recommendedLevel: results.cefr.recommendation
       };
 
       // Add optional task answers if available
@@ -2328,7 +2373,7 @@ time.`;
           )}
 
           {/* Submit Button */}
-          <div className="mt-8 flex justify-center">
+          <div className="mt-8 flex justify-center space-x-4">
             <button
               onClick={handleSubmit}
               className={`px-6 py-3 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] flex items-center shadow-md transition-all ${
@@ -2341,6 +2386,32 @@ time.`;
               </svg>
               Submit Assessment
             </button>
+            
+            {/* Force Submit Button for B1 level */}
+            {level === 'b1' && (
+              <button
+                onClick={handleSubmit}
+                className="px-6 py-3 bg-[#6d2c44] text-white rounded-lg hover:bg-[#592538] flex items-center shadow-md transition-all hover:shadow-lg"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Force Submit
+              </button>
+            )}
+            
+            {/* Force Submit Button for B2 level */}
+            {level === 'b2' && (
+              <button
+                onClick={handleSubmit}
+                className="px-6 py-3 bg-[#6d2c44] text-white rounded-lg hover:bg-[#592538] flex items-center shadow-md transition-all hover:shadow-lg"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Force Submit
+              </button>
+            )}
           </div>
         </div>
       </div>

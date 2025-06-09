@@ -686,7 +686,8 @@ class SpeakingAssessmentController {
           supervisorScore: normalizedScore,
           supervisorFeedback: feedbackJson,
           status: 'evaluated',
-          evaluatedAt: new Date()
+          evaluatedAt: new Date(),
+          overallScore: scoreValue
         }
       );
       

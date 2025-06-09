@@ -106,4 +106,8 @@ async function hasSolvedProblem(username, problemSlug) {
   }
 }
 
-export default mongoose.model('LeetCodeAssessment', leetCodeAssessmentSchema);
+// Use existing model if it exists, otherwise create a new one
+const LeetCodeAssessment = mongoose.models.LeetCodeAssessment || 
+  mongoose.model('LeetCodeAssessment', leetCodeAssessmentSchema);
+
+export default LeetCodeAssessment;

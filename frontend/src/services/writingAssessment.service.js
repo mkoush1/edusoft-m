@@ -343,21 +343,21 @@ class WritingAssessmentService {
     const minimalResponse = wordCount < 10;
     const veryMinimalResponse = wordCount < 3;
     
-    // Compute basic scores based on simple metrics (out of 10)
+    // Compute basic scores based on simple metrics (out of 20)
     // Apply strict penalties for minimal responses
-    let coherenceScore = minimalResponse ? 1 : paragraphCount > 1 ? 7 : 5;
-    let organizationScore = minimalResponse ? 1 : paragraphCount >= 3 ? 8 : 6;
-    let focusScore = minimalResponse ? 1 : wordCount > 150 ? 7 : 5;
-    let vocabularyScore = minimalResponse ? 1 : this.calculateVocabularyScore(answer); // Already on scale of 10
-    let grammarScore = minimalResponse ? 1 : 7; // Default without actual analysis
+    let coherenceScore = minimalResponse ? 2 : paragraphCount > 1 ? 14 : 10;
+    let organizationScore = minimalResponse ? 2 : paragraphCount >= 3 ? 16 : 12;
+    let focusScore = minimalResponse ? 2 : wordCount > 150 ? 14 : 10;
+    let vocabularyScore = minimalResponse ? 2 : this.calculateVocabularyScore(answer) * 2; // Convert to scale of 20
+    let grammarScore = minimalResponse ? 2 : 14; // Default without actual analysis
     
     // For extremely minimal responses (like one nonsensical word), make scores even lower
     if (veryMinimalResponse) {
-      coherenceScore = 0.5;
-      organizationScore = 0.5;
-      focusScore = 0.5;
-      vocabularyScore = 0.5;
-      grammarScore = 0.5;
+      coherenceScore = 1;
+      organizationScore = 1;
+      focusScore = 1;
+      vocabularyScore = 1;
+      grammarScore = 1;
     }
     
     // Prepare criteria array
@@ -369,7 +369,7 @@ class WritingAssessmentService {
           ? 'The response is too brief to evaluate coherence. A complete response with multiple sentences is required.'
           : minimalResponse
             ? 'The response lacks coherence due to insufficient content. More development is needed.'
-            : coherenceScore >= 7 
+            : coherenceScore >= 14 
               ? 'Your ideas flow logically and are easy to follow.' 
               : 'Try to improve the logical flow between your ideas.'
       },
@@ -380,7 +380,7 @@ class WritingAssessmentService {
           ? 'The response is too brief to evaluate organization. A complete response with clear structure is required.'
           : minimalResponse
             ? 'The response lacks organization due to insufficient content. A proper structure is needed.'
-            : organizationScore >= 7 
+            : organizationScore >= 14 
               ? 'Your writing has good structure with clear sections.' 
               : 'Consider organizing your writing with clearer introduction, body, and conclusion.'
       },
@@ -391,7 +391,7 @@ class WritingAssessmentService {
           ? 'The response is too brief to evaluate focus. A complete response addressing the prompt is required.'
           : minimalResponse
             ? 'The response lacks focus and does not adequately address the prompt. More content is needed.'
-            : focusScore >= 7 
+            : focusScore >= 14 
               ? 'You stay on topic and develop your ideas well.' 
               : 'Try to stay more focused on the main topic and develop your ideas further.'
       },
@@ -402,7 +402,7 @@ class WritingAssessmentService {
           ? 'The response is too brief to evaluate vocabulary. A complete response with varied vocabulary is required.'
           : minimalResponse
             ? 'The response contains very limited vocabulary. More varied and appropriate word choices are needed.'
-            : vocabularyScore >= 7 
+            : vocabularyScore >= 14 
               ? 'You use a good range of vocabulary.' 
               : 'Try to use more varied vocabulary to express your ideas.'
       },
@@ -417,9 +417,9 @@ class WritingAssessmentService {
       }
     ];
     
-    // Calculate overall score by summing the criteria scores and converting to percentage
+    // Calculate overall score by summing the criteria scores directly
     const totalPoints = criteria.reduce((sum, criterion) => sum + criterion.score, 0);
-    const overallScore = Math.round((totalPoints / 50) * 100); // Convert to percentage (out of 100)
+    const overallScore = Math.min(100, Math.round(totalPoints)); // Convert to percentage (out of 100)
     
     // Log scoring for debugging
     console.log("Simulated assessment scores:", {

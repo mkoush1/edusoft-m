@@ -15,9 +15,22 @@ router.get('/availability', readingAssessmentController.checkAvailability);
 
 // Get reading assessment data (this would be handled by frontend local data for now)
 router.get('/data', (req, res) => {
+  const { level, language } = req.query;
+  
+  console.log(`Received request for reading assessment data: level=${level}, language=${language}`);
+  
+  // Return a proper response with data structure
   res.status(200).json({
     success: true,
-    message: 'Reading assessment data is handled by the frontend'
+    message: 'Reading assessment data retrieved successfully',
+    data: {
+      level: level || 'a1',
+      language: language || 'english',
+      title: `${level?.toUpperCase() || 'A1'} Reading Assessment`,
+      // The actual data will be handled by the frontend's local data
+      // This is just a signal to the frontend that the API call was successful
+      dataAvailable: true
+    }
   });
 });
 

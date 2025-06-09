@@ -75,12 +75,21 @@ const SupervisorDashboard = () => {
 
   const fetchPendingPresentationAssessments = async () => {
     try {
-      const response = await axios.get('/api/assessments/presentation/pending');
+      const token = localStorage.getItem('token');
+      const response = await axios.get('/api/assessments/presentation/pending', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (response.data.success) {
         setPendingPresentationCount(response.data.assessments.length);
       }
     } catch (error) {
-      // handle error if needed
+      if (error.response && error.response.status === 401) {
+        setError('Session expired or unauthorized. Please log in again.');
+        navigate('/login');
+      }
+      // handle other errors if needed
     }
   };
 
@@ -220,16 +229,6 @@ const SupervisorDashboard = () => {
                   </svg>
                 </div>
               </Link>
-              
-              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-md">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Manage Users</h3>
-                <p className="text-gray-600">View and manage user accounts</p>
-              </div>
-              
-              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-md">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Reports</h3>
-                <p className="text-gray-600">View and generate reports</p>
-              </div>
               
               <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-md">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Settings</h3>

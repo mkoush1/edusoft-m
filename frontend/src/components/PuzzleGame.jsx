@@ -450,12 +450,6 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
               >
                 Back to Dashboard
               </button>
-              <button
-                onClick={() => navigate('/assessment/recommendations')}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              >
-                View Recommendations
-              </button>
             </div>
           </div>
         )}

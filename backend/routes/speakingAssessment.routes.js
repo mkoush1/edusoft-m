@@ -13,7 +13,7 @@ router.get('/user/:userId', asyncHandler(async (req, res) => {
     // Find all assessments for this user
     const assessments = await SpeakingAssessment.find({ userId })
       .sort({ createdAt: -1 }) // Most recent first
-      .select('id userId language level taskId status score supervisorScore createdAt evaluatedAt');
+      .select('id userId language level taskId status score overallScore supervisorScore createdAt evaluatedAt');
     
     return res.status(200).json({
       success: true,

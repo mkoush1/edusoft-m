@@ -81,29 +81,21 @@ const skillCategories = [
         link: "https://www.udemy.com/decision-making"
       }
     ]
-  },
-  {
-    category: "Team Work and Collaboration",
-    description: "Courses to improve your team collaboration skills",
-    courses: [
-      {
-        title: "Team Collaboration",
-        description: "Effective teamwork and collaboration strategies",
-        link: "https://www.coursera.org/team-collaboration"
-      },
-      {
-        title: "Project Management",
-        description: "Managing team projects effectively",
-        link: "https://www.udemy.com/project-management"
-      }
-    ]
   }
 ];
 
 const Recommendations = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Recommended Courses</h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Recommended Courses</h1>
+        <Link
+          to="/dashboard"
+          className="inline-block px-5 py-2 bg-[#592538] text-white rounded-lg shadow hover:bg-[#6d2c44] transition duration-300 font-semibold"
+        >
+          ← Back to Dashboard
+        </Link>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {skillCategories.map((category, idx) => (

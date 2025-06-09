@@ -1068,14 +1068,17 @@ router.get('/puzzle-game/user/:userId/results', authenticateToken, async (req, r
 // Get Fast Question Assessment Results
 router.get('/fast-question/user/:userId/results', authenticateToken, async (req, res) => {
   try {
-    const userId = req.params.userId;
+    let userId = req.params.userId;
+    if (userId === 'me') {
+      userId = req.userId;
+    }
     if (req.userId !== userId) {
       return res.status(403).json({ message: 'Unauthorized' });
     }
 
     const results = await AssessmentResult.find({
       userId,
-      assessmentType: 'fast-question'
+      assessmentType: 'fast-questions'
     }).sort({ completedAt: -1 });
 
     const latestResult = results[0];
@@ -1151,13 +1154,22 @@ router.post('/start/fast-questions', authenticateToken, async (req, res) => {
     // Check if user has already completed this assessment
     const existingResult = await AssessmentResult.findOne({
       userId,
-      assessmentType: 'fast-question'
-    });
+      assessmentType: 'fast-questions'
+    }).sort({ completedAt: -1 });
 
     if (existingResult) {
-      return res.status(403).json({
-        message: 'You have already completed this assessment. You cannot retake it.'
-      });
+      const now = new Date();
+      const completedAt = existingResult.completedAt || existingResult.createdAt;
+      const diffDays = (now - completedAt) / (1000 * 60 * 60 * 24);
+      if (diffDays < 7) {
+        const nextRetake = new Date(completedAt);
+        nextRetake.setDate(completedAt.getDate() + 7);
+        return res.status(403).json({
+          message: `You can retake this assessment in ${Math.ceil(7 - diffDays)} day(s) (on ${nextRetake.toLocaleDateString()})`,
+          nextAvailableDate: nextRetake
+        });
+      }
+      // else, allow retake
     }
 
     // Get questions from the database
@@ -1168,13 +1180,40 @@ router.post('/start/fast-questions', authenticateToken, async (req, res) => {
     }
 
     // Create or update ProblemSolvingAssessment document
-    let assessment = await ProblemSolvingAssessment.findOne({ userId, assessmentType: 'fast-question' });
+    let assessment = await ProblemSolvingAssessment.findOne({ userId, assessmentType: 'fast-questions' });
     if (!assessment) {
+      const maxScore = questions.length;
       assessment = new ProblemSolvingAssessment({
         userId,
-        assessmentType: 'fast-question',
+        assessmentType: 'fast-questions',
         status: 'in-progress',
-        startedAt: new Date()
+        startedAt: new Date(),
+        fastQuestions: {
+          questions: questions.map(q => ({
+            questionNumber: q.questionNumber,
+            questionText: q.questionText,
+            options: q.options.map(opt => ({ text: opt.text, isCorrect: false })), // isCorrect not used here
+            timeLimit: q.timeLimit
+          })),
+          totalScore: 0,
+          maxScore,
+          timeTaken: 0
+        },
+        puzzleGame: {
+          puzzles: [],
+          totalScore: 0,
+          maxScore: 1 // dummy value
+        },
+        codeforces: {
+          handle: 'none',
+          rating: 0,
+          solvedProblems: 0,
+          contests: [],
+          lastUpdated: new Date()
+        },
+        overallScore: 0,
+        maxOverallScore: maxScore,
+        percentage: 0
       });
     }
 
@@ -1197,7 +1236,7 @@ router.post('/submit/fast-questions', authenticateToken, async (req, res) => {
     const userId = req.userId;
 
     // Get all questions for this assessment type
-    const questions = await TestQuestion.find({ assessmentType: 'fast-question' });
+    const questions = await ProblemSolvingQuestion.find({}).sort({ questionNumber: 1 });
 
     // Calculate score
     let score = 0;
@@ -1211,7 +1250,7 @@ router.post('/submit/fast-questions', authenticateToken, async (req, res) => {
     // Save result
     const assessmentResult = new AssessmentResult({
       userId,
-      assessmentType: 'fast-question',
+      assessmentType: 'fast-questions',
       score,
       completedAt: new Date(),
       details: { totalQuestions: questions.length, answers }
@@ -1219,21 +1258,53 @@ router.post('/submit/fast-questions', authenticateToken, async (req, res) => {
 
     await assessmentResult.save();
 
+    // Ensure AssessmentResult exists for progress tracking
+    // (If already exists for this user and assessmentType in last 7 days, update it)
+    const existingResult = await AssessmentResult.findOne({
+      userId,
+      assessmentType: 'fast-questions',
+      completedAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+    });
+    if (!existingResult) {
+      await assessmentResult.save();
+    } else {
+      existingResult.score = score;
+      existingResult.completedAt = new Date();
+      existingResult.details = { totalQuestions: questions.length, answers };
+      await existingResult.save();
+    }
+
     // Update user's completed assessments and progress
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    user.completedAssessments.push({
-      assessmentType: 'fast-question',
-      completedAt: new Date(),
-      score
-    });
+    // Check if user has completed this assessment in the last 7 days
+    const now = new Date();
+    const lastCompletion = user.completedAssessments
+      .filter(a => a.assessmentType === 'fast-questions')
+      .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))[0];
+    let shouldIncrement = true;
+    if (lastCompletion) {
+      const completedAt = new Date(lastCompletion.completedAt);
+      const diffDays = (now - completedAt) / (1000 * 60 * 60 * 24);
+      if (diffDays < 7) {
+        shouldIncrement = false;
+      }
+    }
+
+    if (shouldIncrement) {
+      user.completedAssessments.push({
+        assessmentType: 'fast-questions',
+        completedAt: new Date(),
+        score
+      });
+      user.totalAssessmentsCompleted += 1;
+    }
 
     // Calculate total assessments and progress
     const totalAssessments = await Assessment.countDocuments();
-    user.totalAssessmentsCompleted += 1;
     user.progress = Math.min(100, (user.totalAssessmentsCompleted / totalAssessments) * 100);
 
     await user.save();
@@ -1246,6 +1317,40 @@ router.post('/submit/fast-questions', authenticateToken, async (req, res) => {
       completed: true,
       score
     };
+
+    // Also update or create ProblemSolvingAssessment for this user and assessment type
+    let problemSolvingAssessment = await ProblemSolvingAssessment.findOne({ userId, assessmentType: 'fast-questions' });
+    if (problemSolvingAssessment) {
+      problemSolvingAssessment.status = 'completed';
+      problemSolvingAssessment.completedAt = new Date();
+      problemSolvingAssessment.overallScore = score;
+      problemSolvingAssessment.maxOverallScore = questions.length;
+      problemSolvingAssessment.percentage = (score / questions.length) * 100;
+      await problemSolvingAssessment.save();
+    } else {
+      // Create the assessment if it doesn't exist
+      problemSolvingAssessment = new ProblemSolvingAssessment({
+        userId,
+        assessmentType: 'fast-questions',
+        status: 'completed',
+        completedAt: new Date(),
+        overallScore: score,
+        maxOverallScore: questions.length,
+        percentage: (score / questions.length) * 100,
+        fastQuestions: {
+          questions: questions.map(q => ({
+            questionNumber: q.questionNumber,
+            questionText: q.questionText,
+            options: q.options.map(opt => ({ text: opt.text, isCorrect: false })),
+            timeLimit: q.timeLimit
+          })),
+          totalScore: score,
+          maxScore: questions.length,
+          timeTaken: 0
+        }
+      });
+      await problemSolvingAssessment.save();
+    }
 
     res.json({
       message: 'Assessment submitted successfully',
@@ -1308,6 +1413,140 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
   } catch (err) {
     console.error('Error creating assessment:', err);
     res.status(500).json({ message: 'Failed to create assessment' });
+  }
+});
+
+// Start adaptability assessment
+router.post('/start/adaptability', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    // Check if user has already completed the assessment
+    const existingResult = await AssessmentResult.findOne({
+      userId,
+      assessmentType: 'adaptability'
+    });
+
+    if (existingResult) {
+      return res.status(403).json({
+        message: 'You have already completed this assessment. You cannot retake it.'
+      });
+    }
+
+    // Get adaptability questions
+    const questions = await AdaptabilityAssessmentQuestion.find({}).sort('questionNumber');
+
+    if (!questions || questions.length === 0) {
+      return res.status(404).json({ message: 'No questions available' });
+    }
+
+    res.json({ questions });
+  } catch (error) {
+    console.error('Error starting adaptability assessment:', error);
+    res.status(500).json({ message: 'Error starting assessment', error: error.message });
+  }
+});
+
+// Submit Adaptability Assessment
+router.post('/submit/adaptability', authenticateToken, async (req, res) => {
+  try {
+    const { answers } = req.body;
+    const userId = req.userId;
+
+    // Check if user has completed this assessment in the last 7 days
+    const lastResult = await AssessmentResult.findOne({
+      userId,
+      assessmentType: 'adaptability'
+    }).sort({ completedAt: -1 });
+    const now = new Date();
+    if (lastResult && lastResult.completedAt) {
+      const completedAt = new Date(lastResult.completedAt);
+      const diffDays = (now - completedAt) / (1000 * 60 * 60 * 24);
+      if (diffDays < 7) {
+        const nextRetake = new Date(completedAt);
+        nextRetake.setDate(completedAt.getDate() + 7);
+        return res.status(403).json({
+          message: `You can retake this assessment in ${Math.ceil(7 - diffDays)} day(s) (on ${nextRetake.toLocaleDateString()})`,
+          canRetake: false,
+          nextRetake: nextRetake
+        });
+      }
+    }
+
+    // Calculate score
+    let totalScore = 0;
+    let maxPossibleScore = 0;
+    const questions = await AdaptabilityAssessmentQuestion.find({});
+    answers.forEach(ans => {
+      const q = questions.find(q => q.questionNumber === ans.questionNumber);
+      if (!q) return;
+      maxPossibleScore += q.maxScore;
+      if (q.questionType === 'SJT') {
+        // Assume answer is the value of the selected option
+        totalScore += ans.answer;
+      } else {
+        totalScore += ans.answer;
+      }
+    });
+    const percentage = (totalScore / maxPossibleScore) * 100;
+
+    // Save result
+    const assessmentResult = new AssessmentResult({
+      userId,
+      assessmentType: 'adaptability',
+      score: totalScore,
+      completedAt: now,
+      details: { totalQuestions: questions.length, answers },
+      percentage
+    });
+    await assessmentResult.save();
+
+    res.json({
+      message: 'Assessment submitted successfully',
+      result: {
+        score: totalScore,
+        totalQuestions: questions.length,
+        percentage,
+        canRetake: false,
+        nextRetake: null
+      }
+    });
+  } catch (error) {
+    console.error('Error submitting adaptability assessment:', error);
+    res.status(500).json({ message: 'Error submitting assessment', error: error.message });
+  }
+});
+
+// Get Adaptability Assessment Results
+router.get('/adaptability/user/:userId/results', authenticateToken, async (req, res) => {
+  try {
+    let userId = req.params.userId;
+    if (userId === 'me') {
+      userId = req.userId;
+    }
+    if (req.userId !== userId) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    const results = await AssessmentResult.find({
+      userId,
+      assessmentType: 'adaptability'
+    }).sort({ completedAt: -1 });
+
+    const latestResult = results[0];
+    const hasCompletedAssessments = results.length > 0;
+    const overallScore = latestResult ? latestResult.score : null;
+
+    res.json({
+      overallScore,
+      hasCompletedAssessments,
+      canRetake: false,
+      nextAvailableDate: null,
+      results
+    });
+  } catch (error) {
+    console.error('Error fetching adaptability results:', error);
+    res.status(500).json({ message: 'Error fetching adaptability results', error: error.message });
   }
 });
 

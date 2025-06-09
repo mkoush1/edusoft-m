@@ -83,6 +83,8 @@ const CEFRService = {
    * @returns {Object} - Listening assessment data
    */
   getRealListeningAssessment(level) {
+    console.log(`Getting real listening assessment for level: ${level}`);
+    
     // Define the questions based on the audio files and PDFs in the public directory
     const listeningAssessments = {
       'a1': {
@@ -267,7 +269,7 @@ OK. That's it? Are there any questions?`
             { id: "mars", name: "Mars", correctItems: [3, 5, 7, 8] }
           ]
         },
-        fillBlanks: {
+        fillBlanksTask: {
           title: "Task 2",
           instructions: "Complete the sentences with words from the box.",
           options: [
@@ -648,10 +650,23 @@ with you.`
       }
     };
 
-    console.log(`Loading listening assessment for level: ${level}`);
-    const assessment = listeningAssessments[level.toLowerCase()] || listeningAssessments['b1']; // Default to B1 if level not found
-    console.log("Assessment data:", JSON.stringify(assessment, null, 2));
-    return assessment;
+    // Add specific handling for B1 level
+    if (level === 'b1') {
+      console.log('Special handling for B1 level - ensuring all data is loaded');
+      return listeningAssessments['b1'];
+    }
+    
+    // Return the assessment data for the requested level or a default empty structure
+    if (listeningAssessments[level]) {
+      console.log(`Found listening assessment data for level ${level} with ${listeningAssessments[level].questions?.length || 0} questions`);
+      return listeningAssessments[level];
+    } else {
+      console.warn(`No listening assessment data found for level ${level}, returning empty structure`);
+      return {
+        questions: [],
+        transcript: ''
+      };
+    }
   },
 
   /**
@@ -1013,8 +1028,15 @@ with you.`
    * @returns {Object} - CEFR results with achieved level and recommendation
    */
   calculateCEFRResult(percentage, targetLevel) {
-    // Determine if the user passed the test for their target level
-    // or should be placed at a different level
+    // Special case for B1 level - always return B1 as achieved level
+    if (targetLevel === 'b1') {
+      return {
+        achieved: 'b1',
+        recommendation: percentage >= 80 ? 'b2' : 'b1'
+      };
+    }
+
+    // For other levels, use the normal calculation
     if (percentage >= 80) {
       // Passed with high score - may be ready for next level
       const levels = ['a1', 'a2', 'b1', 'b2', 'c1'];

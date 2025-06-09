@@ -139,30 +139,52 @@ class WritingAssessmentController {
         }));
       }
       
-      // Calculate the score consistently based on criteria
-      // Each criterion is out of 10, so total is out of 50, convert to percentage
-      const totalPoints = criteria.reduce((sum, criterion) => sum + criterion.score, 0);
-      const calculatedScore = Math.round((totalPoints / 50) * 100);
+      // Log the raw scores received to help with debugging
+      console.log('Raw scores received from client:', {
+        providedScore: score,
+        criteria: criteria.map(c => ({ name: c.name, score: c.score }))
+      });
       
-      // Log any discrepancy for debugging
-      if (score !== calculatedScore) {
-        console.log(`Score discrepancy detected in submission: Provided score ${score}%, calculated score ${calculatedScore}%`);
-      }
+      // Keep criteria scores on 0-20 scale without normalization
+      const updatedCriteria = criteria.map(criterion => {
+        return {
+          ...criterion,
+          score: criterion.score
+        };
+      });
       
-      // Always use the calculated score for consistency
-      const finalScore = calculatedScore;
-      console.log(`Using calculated score for consistency: ${finalScore}%`);
+      // Calculate total points (max 100 points for 5 criteria at 20 points each)
+      const totalPoints = updatedCriteria.reduce((sum, criterion) => sum + criterion.score, 0);
       
-      // Create a new assessment record
+      // Convert to percentage (100 points = 100%)
+      const calculatedScore = Math.min(100, Math.round(totalPoints));
+      
+      // Safety check: If the provided score is over 100, normalize it
+      const normalizedProvidedScore = score > 100 ? Math.round(score / 2) : score;
+      
+      // Log the calculation for debugging
+      console.log('Score calculation:', {
+        criteria: updatedCriteria.map(c => ({ name: c.name, score: c.score })),
+        totalPoints,
+        calculatedScore,
+        providedScore: score,
+        normalizedProvidedScore
+      });
+      
+      // Create a new assessment record with original scores
       const writingAssessment = new WritingAssessment({
         userId: userId,
         level: level,
         language: language,
         prompt: task.prompt,
         response: task.response,
-        score: finalScore, // Use the consistent score
+        score: calculatedScore, // Always use the calculated score
         feedback: feedback,
-        criteria: criteria,
+        criteria: updatedCriteria.map(criterion => ({
+          name: criterion.name,
+          score: criterion.score, // Use original score (0-20 scale)
+          feedback: criterion.feedback
+        })),
         completedAt: new Date(),
         nextAvailableDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
       });
@@ -170,14 +192,18 @@ class WritingAssessmentController {
       // Save to database
       await writingAssessment.save();
       
-      // Return both scores to help with debugging
+      // Return success with score calculation details for transparency
       return res.status(201).json({
         success: true,
         message: 'Writing assessment submitted successfully',
         result: {
           ...writingAssessment.toObject(),
-          providedScore: score,
-          calculatedScore: finalScore
+          calculationDetails: {
+            providedScore: score,
+            criteria: updatedCriteria,
+            totalPoints: totalPoints,
+            calculatedScore: calculatedScore
+          }
         }
       });
     } catch (error) {

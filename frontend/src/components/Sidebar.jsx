@@ -61,15 +61,6 @@ const Sidebar = () => {
             <span className="text-sm sm:text-base">Recommendations</span>
           </Link>
           <Link
-            to="/team"
-            className={`w-full flex items-center space-x-3 px-3 sm:px-4 py-3 rounded-lg ${
-              isActive("/team") ? "bg-white/10" : "hover:bg-white/10"
-            }`}
-          >
-            <span className="text-lg sm:text-xl">👥</span>
-            <span className="text-sm sm:text-base">Team</span>
-          </Link>
-          <Link
             to="/settings"
             className={`w-full flex items-center space-x-3 px-3 sm:px-4 py-3 rounded-lg ${
               isActive("/settings") ? "bg-white/10" : "hover:bg-white/10"

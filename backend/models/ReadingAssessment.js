@@ -90,4 +90,8 @@ ReadingAssessmentSchema.statics.canTakeAssessment = async function(userId, level
   };
 };
 
-export default mongoose.model('ReadingAssessment', ReadingAssessmentSchema); 
+// Use existing model if it exists, otherwise create a new one
+const ReadingAssessment = mongoose.models.ReadingAssessment || 
+  mongoose.model('ReadingAssessment', ReadingAssessmentSchema);
+
+export default ReadingAssessment; 

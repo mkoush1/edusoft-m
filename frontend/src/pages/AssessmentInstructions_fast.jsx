@@ -1,8 +1,46 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const AssessmentInstructionsFast = () => {
   const navigate = useNavigate();
+  const [canStart, setCanStart] = useState(false);
+  const [retakeMessage, setRetakeMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkEligibility = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) throw new Error("Not logged in");
+        // Try to start the assessment, but catch 403 for cooldown
+        await axios.post("http://localhost:5000/api/assessments/start/fast-questions", {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setCanStart(true);
+        setRetakeMessage("");
+      } catch (err) {
+        if (err.response && err.response.status === 403) {
+          setCanStart(false);
+          setRetakeMessage(err.response.data.message || "You cannot retake this assessment yet.");
+        } else {
+          setCanStart(false);
+          setRetakeMessage("Unable to check assessment eligibility.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkEligibility();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FDF8F8]">
+        <div className="text-[#592538] text-xl">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FDF8F8] flex items-center justify-center">
@@ -68,12 +106,26 @@ const AssessmentInstructionsFast = () => {
           >
             Back to Dashboard
           </button>
-          <button
-            onClick={() => navigate("/assessment/quiz/fast-questions")}
-            className="flex-1 px-6 py-3 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300"
-          >
-            Start Assessment
-          </button>
+          {canStart ? (
+            <button
+              onClick={() => navigate("/assessment/quiz/fast-questions")}
+              className="flex-1 px-6 py-3 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300"
+            >
+              Start Assessment
+            </button>
+          ) : (
+            <>
+              <div className="flex-1 px-6 py-3 bg-yellow-100 text-yellow-800 rounded-lg flex items-center justify-center">
+                {retakeMessage}
+              </div>
+              <button
+                onClick={() => navigate("/assessment/results/fast-questions")}
+                className="flex-1 px-6 py-3 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300"
+              >
+                View Result
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

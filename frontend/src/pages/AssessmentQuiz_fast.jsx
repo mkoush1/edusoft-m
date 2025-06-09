@@ -149,8 +149,8 @@ const AssessmentQuizFast = () => {
           },
         }
       );
-      // Navigate to AssessmentResults with type parameter
-      navigate('/assessment-results?assessmentType=fast-questions');
+      // Navigate to the new results page
+      navigate('/assessment/results/fast-questions');
     } catch (error) {
       setError("Failed to submit assessment. Please try again.");
     } finally {

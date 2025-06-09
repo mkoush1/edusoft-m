@@ -1,11 +1,51 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { decodeJWT } from '../utils/jwt';
+import api from '../services/api';
 
 const AssessmentInstructionsAdaptability = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [canTake, setCanTake] = useState(false);
+  const [cooldownMsg, setCooldownMsg] = useState("");
+
+  useEffect(() => {
+    const checkEligibility = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const decoded = decodeJWT(token);
+        const userId = decoded?.userId;
+        if (!userId) return;
+        const res = await api.get(`/assessments/status/${userId}`);
+        const completed = res.data?.data?.assessments?.find(a => a.category?.toLowerCase() === 'adaptability');
+        if (completed && completed.completedAt) {
+          const completedAt = new Date(completed.completedAt);
+          const now = new Date();
+          const diff = (now - completedAt) / (1000 * 60 * 60 * 24);
+          if (diff >= 7) {
+            setCanTake(true);
+            setCooldownMsg("");
+          } else {
+            setCanTake(false);
+            const nextRetake = new Date(completedAt);
+            nextRetake.setDate(completedAt.getDate() + 7);
+            const daysLeft = Math.ceil((nextRetake - now) / (1000 * 60 * 60 * 24));
+            setCooldownMsg(`You can retake this assessment in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} (on ${nextRetake.toLocaleDateString()})`);
+          }
+        } else {
+          setCanTake(true);
+          setCooldownMsg("");
+        }
+      } catch (err) {
+        setCanTake(false);
+        setCooldownMsg("");
+      }
+    };
+    checkEligibility();
+  }, []);
 
   const handleStartAssessment = async () => {
     setLoading(true);
@@ -33,9 +73,14 @@ const AssessmentInstructionsAdaptability = () => {
         setError("Failed to start assessment. Please try again later.");
       }
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Failed to start assessment. Please try again."
-      );
+      if (err.response?.status === 403) {
+        // Already completed, go to results page
+        navigate("/assessment/results/adaptability");
+      } else {
+        setError(
+          err.response?.data?.message || "Failed to start assessment. Please try again."
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -82,25 +127,39 @@ const AssessmentInstructionsAdaptability = () => {
             </ul>
           </div>
         </div>
-        {/* Buttons */}
+        {/* Action Buttons & Cooldown/Result Logic */}
         {error && (
           <div className="mb-4 text-red-600 text-center">{error}</div>
         )}
-        <div className="flex justify-between gap-4 mt-8">
+        {cooldownMsg && !canTake && (
+          <div className="mb-4 text-yellow-700 bg-yellow-100 rounded-lg px-4 py-2 text-center">
+            {cooldownMsg}
+          </div>
+        )}
+        <div className="flex flex-wrap gap-4">
           <button
             onClick={() => navigate("/dashboard")}
-            className="flex-1 px-4 py-2 bg-gray-100 text-[#592538] rounded-lg hover:bg-gray-200 transition duration-300"
+            className="flex-1 px-6 py-3 bg-gray-100 text-[#592538] rounded-lg hover:bg-gray-200 transition duration-300"
             disabled={loading}
           >
             Back to Dashboard
           </button>
-          <button
-            onClick={handleStartAssessment}
-            className="flex-1 px-4 py-2 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300"
-            disabled={loading}
-          >
-            {loading ? "Starting..." : "Start Assessment"}
-          </button>
+          {canTake ? (
+            <button
+              onClick={handleStartAssessment}
+              className="flex-1 px-6 py-3 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300"
+              disabled={loading}
+            >
+              {loading ? "Starting..." : "Start Assessment"}
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate("/assessment/results/adaptability")}
+              className="flex-1 px-6 py-3 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300"
+            >
+              View Result
+            </button>
+          )}
         </div>
       </div>
     </div>

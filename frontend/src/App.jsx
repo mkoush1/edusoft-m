@@ -51,6 +51,8 @@ import SpeakingAssessmentReview from "./components/supervisor/SpeakingAssessment
 
 import AdminUsers from "./pages/AdminUsers";
 import AdminSupervisors from './pages/AdminSupervisors';
+import AssessmentResultsFast from './pages/AssessmentResults_fast';
+import AssessmentResultsAdaptability from './pages/AssessmentResults_adaptability';
 
 
 const App = () => {
@@ -108,6 +110,8 @@ const App = () => {
         <Route path="/assessment/quiz/adaptability" element={<AssessmentQuizAdaptability />} />
         <Route path="/recommendations" element={<Recommendations />} />
         <Route path="/assessment/leetcode" element={<LeetCodeAssessment />} />
+        <Route path="/assessment/results/fast-questions" element={<AssessmentResultsFast />} />
+        <Route path="/assessment/results/adaptability" element={<AssessmentResultsAdaptability />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

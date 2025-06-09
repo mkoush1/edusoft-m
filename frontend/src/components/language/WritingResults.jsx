@@ -11,14 +11,43 @@ const WritingResults = ({ results, onBack }) => {
   // Calculate percentage score directly from criteria scores to ensure accuracy
   let scorePercentage = 0;
   
-  // If we have criteria scores, sum them up
+  // If we have criteria scores, sum them up and calculate percentage
   if (results?.tasks && results.tasks.length > 0 && results.tasks[0]?.aiEvaluation?.criteria) {
     const criteria = results.tasks[0].aiEvaluation.criteria;
-    // Use the actual score without multiplying
-    scorePercentage = criteria.reduce((sum, criterion) => sum + criterion.score, 0);
+    
+    // First normalize any scores that may be on a 0-20 scale to 0-10 scale
+    const normalizedScores = criteria.map(criterion => 
+      criterion.score > 10 ? criterion.score / 2 : criterion.score
+    );
+    
+    // Calculate total score from normalized scores (max 50 points)
+    const totalScore = normalizedScores.reduce((sum, score) => sum + score, 0);
+    
+    // Convert to percentage (50 points = 100%)
+    scorePercentage = Math.min(100, Math.round((totalScore / 50) * 100));
+    
+    console.log('Score calculation in WritingResults:', {
+      normalizedScores,
+      totalScore,
+      scorePercentage
+    });
   } else {
     // Fallback to the provided score if criteria not available
-    scorePercentage = Math.round(results?.score || 0);
+    const rawScore = results?.score || 0;
+    
+    // If the score is over 100, it's likely doubled
+    scorePercentage = rawScore > 100 ? Math.round(rawScore / 2) : rawScore;
+    
+    console.log('Using fallback score in WritingResults:', {
+      rawScore,
+      normalizedScore: scorePercentage
+    });
+  }
+  
+  // Final safety check to ensure score is never over 100%
+  if (scorePercentage > 100) {
+    console.log(`Final score ${scorePercentage}% was still over 100%, normalizing to ${Math.round(scorePercentage / 2)}%`);
+    scorePercentage = Math.round(scorePercentage / 2);
   }
   
   // Get the task data (we now only have one task)
@@ -88,15 +117,24 @@ const WritingResults = ({ results, onBack }) => {
               <div className="mt-4">
                 <h4 className="text-sm font-medium text-gray-700 mb-2">Writing Criteria</h4>
                 <div className="space-y-3">
-                  {task.aiEvaluation.criteria.map((criterion, index) => (
-                    <div key={index} className="bg-white p-3 rounded border border-blue-100">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">{criterion.name}</span>
-                        <span className="text-sm font-medium text-[#592538]">{criterion.score}/20</span>
+                  {task.aiEvaluation.criteria.map((criterion, index) => {
+                    // Remove numbered prefixes from feedback
+                    const cleanFeedback = criterion.feedback ? criterion.feedback.replace(/^\d+\.\s+/, '') : '';
+                    
+                    // Normalize the display score to 0-10 scale
+                    const rawScore = criterion.score;
+                    const displayScore = rawScore > 10 ? Math.round(rawScore / 2) : rawScore;
+                    
+                    return (
+                      <div key={index} className="bg-white p-3 rounded border border-blue-100">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">{criterion.name}</span>
+                          <span className="text-sm font-medium text-[#592538]">{displayScore}/10</span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">{cleanFeedback}</p>
                       </div>
-                      <p className="text-xs text-gray-600 mt-1">{criterion.feedback}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // OpenRouter API key
-const OPENROUTER_API_KEY = "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";
+const OPENROUTER_API_KEY = "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";
 const MODEL = "meta-llama/llama-3.3-8b-instruct:free";
 
 async function testOpenRouter() {

@@ -10,7 +10,7 @@ dotenv.config();
 class SpeakingAssessmentService {
   constructor() {
     // Use the provided OpenRouter API key or fall back to environment variable
-    this.openRouterApiKey = "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";
+    this.openRouterApiKey = "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";
     this.model = "meta-llama/llama-3.2-11b-vision-instruct:free";
     console.log("SpeakingAssessmentService initialized with model:", this.model);
     

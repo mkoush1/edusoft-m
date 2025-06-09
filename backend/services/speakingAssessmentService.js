@@ -10,7 +10,7 @@ dotenv.config();
 class SpeakingAssessmentService {
   constructor() {
     // Use the provided OpenRouter API key or fall back to environment variable
-    this.openRouterApiKey = "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";
+    this.openRouterApiKey = "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";
     this.model = "meta-llama/llama-3.2-11b-vision-instruct:free";
     console.log("SpeakingAssessmentService initialized with model:", this.model);
     
@@ -312,174 +312,35 @@ Be specific and constructive in your feedback, highlighting both strengths and a
     const feedbackOptions = [
       `You used a mix of simple and complex sentence structures. There were some errors in grammar and word order, particularly with verb tenses and articles. These occasionally caused confusion.`,
       `Your grammatical range was sufficient but limited. You mainly relied on simple structures with some attempts at more complex ones. Errors occurred with subject-verb agreement and prepositions.`,
-      `You demonstrated reasonable control of basic grammatical structures. More complex sentences contained errors that sometimes affected meaning. Practice using a wider range of grammatical patterns.`
+      `You demonstrated good control of basic grammar with some effective complex structures. Errors occasionally occurred with word order in questions and with irregular verb forms. Work on maintaining grammatical accuracy when speaking at length.`,
+      `Your grammar was generally accurate with a good range of structures. Some errors with articles and tense consistency were noticed. To improve, focus on maintaining grammatical precision throughout extended responses, especially with more complex structures.`
     ];
-    
     return feedbackOptions[Math.floor(Math.random() * feedbackOptions.length)];
   }
 
   getPronunciationFeedback() {
     const feedbackOptions = [
-      `Your pronunciation was generally clear and distinct. However, there were some instances where your speech was unclear or difficult to understand. Practice pronouncing words more clearly and distinctly.`,
-      `Your pronunciation was adequate but had some inconsistencies. Some words were pronounced incorrectly or with incorrect stress. Focus on improving your pronunciation by practicing with a pronunciation guide.`,
-      `Your pronunciation was inconsistent and had significant errors. This affected your speech clarity and made it difficult for others to understand. Practice with a pronunciation guide and seek professional help.`
+      `Your pronunciation was generally clear with good control of stress and intonation patterns. Some individual sounds were mispronounced but didn't affect understanding. Work on the pronunciation of 'th' sounds and word stress in multisyllabic words.`,
+      `You spoke with fairly clear pronunciation and appropriate intonation. Some vowel sounds were inconsistent. Practice the difference between long and short vowel sounds and pay attention to sentence-level stress to emphasize key information.`,
+      `Your speech was mostly clear with some effective use of intonation. Consonant clusters sometimes caused difficulty. Focus on maintaining clear pronunciation toward the end of sentences when your speech tends to become less distinct.`,
+      `You demonstrated good rhythm and stress patterns in most of your speech. Some specific sounds were consistently mispronounced. Work on problematic phonemes and practice linking words together more smoothly in connected speech.`
     ];
-    
     return feedbackOptions[Math.floor(Math.random() * feedbackOptions.length)];
   }
 
   getOverallFeedback(topic) {
-    // Implement the logic to generate overall feedback based on the topic
-    return "Overall feedback based on the topic";
+    return `You communicated effectively about ${topic}, expressing your ideas with reasonable clarity. Your strengths include a good range of vocabulary and the ability to develop relevant points. To reach a higher level, focus on developing more complex grammatical structures, improving the precision of your vocabulary, and enhancing your fluency by reducing hesitations.`;
   }
 
   getRecommendations() {
-    // Implement the logic to generate recommendations based on the topic
-    return ["Recommendation 1", "Recommendation 2", "Recommendation 3"];
-  }
-
-  /**
-   * Evaluate speaking based on pre-transcribed text
-   * @param {string} question - The question or topic for the speaking assessment
-   * @param {string} transcribedText - The pre-transcribed text from frontend
-   * @returns {Promise<Object>} - Assessment results
-   */
-  async evaluateTranscribedText(question, transcribedText) {
-    try {
-      console.log("Evaluating transcribed text for question:", question);
-      console.log("Transcribed text length:", transcribedText.length);
-      
-      // Check if we should use mock response
-      if (this.useMockResponse) {
-        console.log("Using mock response for transcribed text assessment");
-        const mockAssessment = this.getMockAssessment(question);
-        
-        return {
-          success: true,
-          assessment: mockAssessment,
-          message: "Mock assessment generated successfully for transcribed text"
-        };
-      }
-      
-      // Prepare the payload for the API - same as in evaluateSpeaking but using the provided text
-      const payload = {
-        model: this.model,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `I need you to evaluate my speaking skills based on the following question and my transcribed response.
-                
-Question: ${question}
-
-My Transcribed Response: ${transcribedText}
-
-Please provide a detailed assessment of my speaking skills covering:
-1. Fluency and Coherence (score out of 9)
-2. Lexical Resource / Vocabulary (score out of 9)
-3. Grammatical Range and Accuracy (score out of 9)
-4. Pronunciation (score out of 9)
-
-For each criterion, give me:
-- A score out of 9
-- Specific feedback on what I did well
-- Specific areas for improvement
-
-Also provide:
-- An overall score out of 9
-- Overall feedback on my speaking performance
-- 3-5 specific recommendations for improvement
-
-Format your response as a structured JSON object with the following fields:
-{
-  "criteria": [
-    {"name": "Fluency and Coherence", "score": X, "feedback": "detailed feedback"},
-    {"name": "Lexical Resource", "score": X, "feedback": "detailed feedback"},
-    {"name": "Grammatical Range and Accuracy", "score": X, "feedback": "detailed feedback"},
-    {"name": "Pronunciation", "score": X, "feedback": "detailed feedback"}
-  ],
-  "overallScore": X,
-  "overallFeedback": "detailed overall assessment",
-  "recommendations": ["recommendation1", "recommendation2", "recommendation3"]
-}
-
-Be specific and constructive in your feedback, highlighting both strengths and areas for improvement.`
-              }
-            ]
-          }
-        ]
-      };
-      
-      // Make the API request to evaluate the transcribed text
-      console.log("Making API request to evaluate transcribed text...");
-      const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', payload, {
-        headers: {
-          'Authorization': `Bearer ${this.openRouterApiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://edusoft.com'
-        },
-        timeout: 30000
-      });
-      
-      if (response.data && response.data.choices && response.data.choices.length > 0) {
-        const responseText = response.data.choices[0].message.content;
-        console.log("Raw API response:", responseText);
-        
-        try {
-          // Parse the JSON response
-          const jsonStartIndex = responseText.indexOf('{');
-          const jsonEndIndex = responseText.lastIndexOf('}') + 1;
-          const jsonString = responseText.substring(jsonStartIndex, jsonEndIndex);
-          
-          const assessment = JSON.parse(jsonString);
-          
-          // Add metadata
-          assessment.isAiGenerated = true;
-          assessment.isMockData = false;
-          assessment.aiModel = response.data.model || this.model;
-          
-          return {
-            success: true,
-            assessment: assessment,
-            message: "Assessment generated successfully from transcribed text"
-          };
-        } catch (parseError) {
-          console.error("Error parsing AI response:", parseError);
-          console.error("Raw response:", responseText);
-          
-          if (this.useFallbackOnError) {
-            console.log("Using fallback mock assessment due to parsing error");
-            const mockAssessment = this.getMockAssessment(question);
-            return {
-              success: true,
-              assessment: mockAssessment,
-              message: "Using fallback assessment due to API response parsing error"
-            };
-          } else {
-            throw new Error("Failed to parse AI response");
-          }
-        }
-      } else {
-        throw new Error("Invalid API response format");
-      }
-    } catch (error) {
-      console.error("Error evaluating transcribed text:", error.message);
-      
-      if (this.useFallbackOnError) {
-        console.log("Using fallback mock assessment due to API error");
-        const mockAssessment = this.getMockAssessment(question);
-        return {
-          success: true,
-          assessment: mockAssessment,
-          message: "Using fallback assessment due to API error"
-        };
-      } else {
-        throw error;
-      }
-    }
+    return [
+      'Practice speaking about a variety of topics to build confidence and fluency.',
+      'Expand your vocabulary by learning new words and phrases every day.',
+      'Record yourself speaking and listen for areas to improve pronunciation and grammar.',
+      'Ask for feedback from teachers or native speakers to identify specific areas for improvement.',
+      'Review grammar rules and practice using them in your spoken responses.'
+    ];
   }
 }
 
-export default new SpeakingAssessmentService();
+export default SpeakingAssessmentService;

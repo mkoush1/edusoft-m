@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { decodeJWT } from '../utils/jwt';
-import api, { getAssessmentResults } from '../services/api';
+import axios from "axios";
 
-const LeadershipResult = () => {
+const AssessmentResultsAdaptability = () => {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState("");
   const [canRetake, setCanRetake] = useState(false);
   const [retakeMessage, setRetakeMessage] = useState("");
   const navigate = useNavigate();
@@ -14,27 +13,16 @@ const LeadershipResult = () => {
   useEffect(() => {
     const fetchResult = async () => {
       try {
-        const response = await getAssessmentResults("leadership");
-        const latestResult = Array.isArray(response.data) && response.data.length > 0 ? response.data[0] : null;
-        setResult(latestResult);
-        setLoading(false);
-      } catch (err) {
-        setError("Failed to load assessment result");
-        setLoading(false);
-      }
-    };
-
-    const fetchRetakeStatus = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-        const decoded = decodeJWT(token);
-        const userId = decoded?.userId;
-        if (!userId) return;
-        const res = await api.get(`/assessments/status/${userId}`);
-        const completed = res.data?.data?.assessments?.find(a => a.category === 'leadership');
-        if (completed && completed.completedAt) {
-          const completedAt = new Date(completed.completedAt);
+        const token = localStorage.getItem("token");
+        if (!token) throw new Error("Not logged in");
+        const res = await axios.get("http://localhost:5000/api/assessments/adaptability/user/me/results", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const latest = res.data.results && res.data.results.length > 0 ? res.data.results[0] : null;
+        setResult(latest);
+        // Retake logic: allow retake after 7 days
+        if (latest && latest.completedAt) {
+          const completedAt = new Date(latest.completedAt);
           const now = new Date();
           const diff = (now - completedAt) / (1000 * 60 * 60 * 24);
           if (diff >= 7) {
@@ -51,15 +39,20 @@ const LeadershipResult = () => {
           setCanRetake(true);
           setRetakeMessage("");
         }
+        setLoading(false);
       } catch (err) {
-        setCanRetake(false);
-        setRetakeMessage("");
+        if (err.response && err.response.status === 401) {
+          // Token expired or unauthorized, redirect to login
+          localStorage.removeItem("token");
+          navigate("/login");
+        } else {
+          setError("Failed to load assessment result");
+        }
+        setLoading(false);
       }
     };
-
     fetchResult();
-    fetchRetakeStatus();
-  }, []);
+  }, [navigate]);
 
   if (loading) {
     return (
@@ -83,27 +76,26 @@ const LeadershipResult = () => {
     );
   }
 
-  // Calculate score summary
-  const percentage = result?.percentage ? Math.round(result.percentage) : 0;
+  const percent = result?.percentage !== undefined ? Math.round(result.percentage) : 0;
   let summary = "";
-  if (percentage >= 80) summary = "Excellent leadership skills!";
-  else if (percentage >= 60) summary = "Good job! Keep improving.";
-  else if (percentage >= 40) summary = "Fair. Consider more practice.";
-  else summary = "Needs improvement. Keep learning!";
+  if (percent >= 80) summary = "Excellent adaptability!";
+  else if (percent >= 60) summary = "Good adaptability. Keep practicing flexibility.";
+  else if (percent >= 40) summary = "Fair. Consider more practice adapting to change.";
+  else summary = "Needs improvement. Work on your adaptability skills.";
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#FDF8F8] py-8">
       <div className="bg-white rounded-2xl shadow-lg p-8 max-w-lg w-full">
         <h1 className="text-2xl font-bold text-[#592538] mb-6 text-center">
-          Leadership Assessment Result
+          Adaptability and Flexibility Assessment Result
         </h1>
         <div className="flex flex-col items-center mb-6">
-          <div className="text-5xl font-extrabold text-[#592538] mb-2">{percentage}%</div>
+          <div className="text-3xl font-bold text-green-700 mb-2">{percent}%</div>
           <div className="text-lg text-gray-700 mb-2">{summary}</div>
         </div>
         {canRetake ? (
           <button
-            onClick={() => navigate('/assessment/leadership')}
+            onClick={() => navigate('/assessment/quiz/adaptability')}
             className="w-full mb-4 px-6 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition duration-300 font-semibold"
           >
             Retake Assessment
@@ -124,4 +116,4 @@ const LeadershipResult = () => {
   );
 };
 
-export default LeadershipResult;
+export default AssessmentResultsAdaptability; 

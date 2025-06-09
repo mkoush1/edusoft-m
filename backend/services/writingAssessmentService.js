@@ -10,7 +10,7 @@ dotenv.config();
 class WritingAssessmentService {
   constructor() {
     // Use the provided OpenRouter API key or fall back to environment variable
-    this.openRouterApiKey = "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";
+    this.openRouterApiKey = "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";
     this.model = "meta-llama/llama-3.3-8b-instruct:free";
     console.log("WritingAssessmentService initialized with model:", this.model);
   }
@@ -175,12 +175,44 @@ Please provide:
       const sections = aiResponse.split(/\d+\.\s+/);
       console.log("Split sections count:", sections.length);
       
-      // Extract feedback for each criterion and overall feedback
-      if (coherenceMatch) assessment.criteria[0].score = parseInt(coherenceMatch[1]);
-      if (organizationMatch) assessment.criteria[1].score = parseInt(organizationMatch[1]);
-      if (focusMatch) assessment.criteria[2].score = parseInt(focusMatch[1]);
-      if (vocabularyMatch) assessment.criteria[3].score = parseInt(vocabularyMatch[1]);
-      if (grammarMatch) assessment.criteria[4].score = parseInt(grammarMatch[1]);
+      // Extract raw scores from AI response
+      const rawScores = [];
+      if (coherenceMatch) rawScores.push(parseInt(coherenceMatch[1]));
+      if (organizationMatch) rawScores.push(parseInt(organizationMatch[1]));
+      if (focusMatch) rawScores.push(parseInt(focusMatch[1]));
+      if (vocabularyMatch) rawScores.push(parseInt(vocabularyMatch[1]));
+      if (grammarMatch) rawScores.push(parseInt(grammarMatch[1]));
+      
+      // Determine if scores are on a 0-20 scale by analyzing the distribution
+      const maxRawScore = Math.max(...rawScores);
+      const avgRawScore = rawScores.reduce((sum, score) => sum + score, 0) / rawScores.length;
+      
+      // Detect if we're dealing with a 0-20 scale
+      const isUsingDoubleScale = maxRawScore > 10;
+      const possiblyDoubled = avgRawScore > 7.5; // Suspiciously high average might indicate doubled scores
+      
+      console.log("Score scale analysis:", {
+        rawScores,
+        maxRawScore,
+        avgRawScore,
+        isUsingDoubleScale,
+        possiblyDoubled
+      });
+      
+      // Function to normalize a score to 0-10 scale if needed
+      const normalizeScore = (score) => {
+        if (isUsingDoubleScale && score > 10) {
+          return score / 2;
+        }
+        return score;
+      };
+      
+      // Set scores with proper normalization
+      if (coherenceMatch) assessment.criteria[0].score = normalizeScore(parseInt(coherenceMatch[1]));
+      if (organizationMatch) assessment.criteria[1].score = normalizeScore(parseInt(organizationMatch[1]));
+      if (focusMatch) assessment.criteria[2].score = normalizeScore(parseInt(focusMatch[2]));
+      if (vocabularyMatch) assessment.criteria[3].score = normalizeScore(parseInt(vocabularyMatch[1]));
+      if (grammarMatch) assessment.criteria[4].score = normalizeScore(parseInt(grammarMatch[1]));
       
       // Extract feedback sections
       for (let i = 1; i <= 5; i++) {
@@ -200,34 +232,32 @@ Please provide:
         }
       }
       
-      // Compute overall score if not provided
+      // Calculate the overall score based on normalized criteria scores
+      // Each criterion is on a 0-10 scale, so total is out of 50 points
+      const totalScore = assessment.criteria.reduce((sum, criterion) => sum + criterion.score, 0);
+      
+      // Convert to percentage (50 points = 100%)
+      const calculatedPercentage = Math.min(100, Math.round((totalScore / 50) * 100));
+      
+      // Set the overall score
+      assessment.overallScore = calculatedPercentage;
+      
+      console.log("Final normalized scores:", {
+        criteria: assessment.criteria.map(c => ({ name: c.name, score: c.score })),
+        totalScore,
+        calculatedPercentage
+      });
+      
+      // Record original score from AI for debugging
       if (overallMatch) {
-        assessment.overallScore = parseInt(overallMatch[1]);
-        console.log("Using matched overall score:", assessment.overallScore);
-      } else {
-        // Calculate average if not provided
-        const sum = assessment.criteria.reduce((acc, criterion) => acc + criterion.score, 0);
-        assessment.overallScore = Math.round((sum / 5) * 10); // Convert to percentage
-        console.log("Calculated overall score:", assessment.overallScore);
-      }
-      
-      // Ensure score consistency - this is the key change to fix the score discrepancy
-      // Store the raw score calculation for reference
-      assessment.rawScoreCalculation = assessment.criteria.reduce((acc, criterion) => acc + criterion.score, 0);
-      
-      // Recalculate overall score based on criteria scores to ensure consistency
-      // Each criterion is out of 10, so total is out of 50, convert to percentage
-      const calculatedScore = Math.round((assessment.rawScoreCalculation / 50) * 100);
-      
-      // Always use the calculated score for consistency
-      assessment.overallScore = calculatedScore;
-      console.log("Using calculated score for consistency:", assessment.overallScore);
-      
-      // Calculate original score for debugging
-      if (overallMatch) {
-        const originalScore = parseInt(overallMatch[1]);
-        if (originalScore !== calculatedScore) {
-          console.log(`Score discrepancy detected: AI gave ${originalScore}%, calculation gives ${calculatedScore}%`);
+        const originalAIScore = parseInt(overallMatch[1]);
+        assessment.originalAIScore = originalAIScore;
+        
+        // Check if the AI's overall score needs normalization (if it's > 100%)
+        if (originalAIScore > 100) {
+          const normalizedAIScore = Math.round(originalAIScore / 2);
+          console.log(`AI gave score > 100%: ${originalAIScore}%, normalizing to ${normalizedAIScore}%`);
+          assessment.normalizedAIScore = normalizedAIScore;
         }
       }
       
@@ -336,7 +366,7 @@ Please provide:
         }
       }
       
-      console.log("Parsing complete, returning assessment object");
+      console.log("Parsing complete, returning assessment object with score:", assessment.overallScore);
       return assessment;
     } catch (error) {
       console.error('Error parsing AI response:', {

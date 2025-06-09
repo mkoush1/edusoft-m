@@ -4,6 +4,7 @@ import DashboardLayout from "../components/DashboardLayout";
 import AssessmentCard from "../components/AssessmentCard";
 import api from "../services/api";
 import { decodeJWT } from "../utils/jwt";
+import AssessmentService from '../services/assessment.service';
 // import '../styles/Dashboard.css';
 
 const SidebarItem = ({ icon, text, active = false }) => (
@@ -34,9 +35,20 @@ const UserDashboard = () => {
     { icon: "📊", value: "0", label: "Completed Tests" },
     { icon: "📝", value: "0", label: "Available Tests" },
     { icon: "🎯", value: "0%", label: "Overall Progress" },
-    { icon: "⏱️", value: "0", label: "Time Spent" },
+    { icon: "📈", value: "0%", label: "Average Score" },
   ]);
   const [completedAssessments, setCompletedAssessments] = useState([]);
+  const [speakingAssessments, setSpeakingAssessments] = useState([]);
+
+  // Calculate average score
+  const calculateAverageScore = (assessments = completedAssessments) => {
+    if (!assessments || assessments.length === 0) return 0;
+    const totalScore = assessments.reduce(
+      (sum, assessment) => sum + (assessment.score || 0),
+      0
+    );
+    return Math.round(totalScore / assessments.length);
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -65,28 +77,110 @@ const UserDashboard = () => {
       const assessmentsResponse = await api.get("/assessments");
       console.log("Assessments response:", assessmentsResponse.data);
 
-      // Fetch user's assessment status
-      const statusResponse = await api.get(
-        `/assessments/status/${userId}`
-      );
-      console.log("Status response:", statusResponse.data);
+      // Fetch user's progress data using the new endpoint
+      const progressResponse = await api.get(`/progress/${userId}`);
+      console.log("Progress response:", progressResponse.data);
 
-      const status = statusResponse.data?.data || {};
-
-      // Update stats with safe property access and defaults
+      const progressData = progressResponse.data?.data || {};
+      const completedData = progressData.completedAssessments || [];
+      // Fetch speaking assessments from backend
+      const speakingRes = await AssessmentService.getUserSpeakingAssessments(userId);
+      let speakingList = [];
+      if (speakingRes && speakingRes.success && Array.isArray(speakingRes.assessments)) {
+        speakingList = speakingRes.assessments;
+      }
+      setSpeakingAssessments(speakingList);
+      // Merge speaking scores into completedAssessments
+      const merged = completedData.map(a => {
+        if (/^Speaking [ABC][12]$/i.test(a.assessmentType)) {
+          // Find matching speaking assessment by level
+          const level = a.assessmentType.split(' ')[1].toLowerCase();
+          const match = speakingList.find(s => s.level && s.level.toLowerCase() === level);
+          if (match && typeof match.score === 'number') {
+            return { ...a, score: match.score };
+          }
+        }
+        return a;
+      });
+      
+      // Group completed assessments by category
+      const assessmentsByCategory = {};
+      
+      // Group core assessments
+      const coreCategories = ['Leadership', 'Problem Solving', 'Presentation', 'Adaptability and Flexibility', 'Communication'];
+      
+      coreCategories.forEach(category => {
+        const categoryAssessments = merged.filter(assessment => {
+          const assessmentType = assessment.assessmentType.toLowerCase();
+          return (
+            assessmentType === category.toLowerCase() || 
+            assessmentType.includes(category.toLowerCase())
+          );
+        }) || [];
+        
+        if (categoryAssessments.length > 0) {
+          assessmentsByCategory[category] = categoryAssessments;
+        }
+      });
+      
+      // Process Problem Solving subcategories
+      const problemSolvingSubcategories = ['Fast Questions Assessment', 'Puzzle Game Assessment', 'LeetCode Assessment'];
+      
+      problemSolvingSubcategories.forEach(subcat => {
+        const subcatAssessments = merged.filter(
+          a => a.assessmentType.includes(subcat)
+        ) || [];
+        
+        if (subcatAssessments.length > 0) {
+          if (!assessmentsByCategory['Problem Solving']) {
+            assessmentsByCategory['Problem Solving'] = [];
+          }
+          assessmentsByCategory['Problem Solving'].push(...subcatAssessments);
+        }
+      });
+      
+      // Process Communication subcategories (CEFR)
+      const communicationTypes = ['Listening', 'Reading', 'Writing', 'Speaking'];
+      const cefrLevels = ['A1', 'A2', 'B1', 'B2', 'C1'];
+      
+      communicationTypes.forEach(type => {
+        const typeAssessments = [];
+        
+        cefrLevels.forEach(level => {
+          const assessmentsOfTypeAndLevel = merged.filter(
+            a => a.assessmentType === `${type} ${level}`
+          ) || [];
+          
+          typeAssessments.push(...assessmentsOfTypeAndLevel);
+        });
+        
+        if (typeAssessments.length > 0) {
+          if (!assessmentsByCategory['Communication']) {
+            assessmentsByCategory['Communication'] = [];
+          }
+          assessmentsByCategory['Communication'].push(...typeAssessments);
+        }
+      });
+      
+      console.log('Assessments by category:', assessmentsByCategory);
+      
+      // Update stats with the actual data from the progress endpoint
       const newStats = [...stats];
-      newStats[0].value = (status.totalCompleted || 0).toString(); // Completed Tests
-      newStats[1].value = (status.totalAvailable || 0).toString(); // Available Tests
-      newStats[2].value = `${Math.round(status.progress || 0)}%`; // Progress
+      newStats[0].value = progressData.totalCompleted.toString(); // Completed Tests
+      newStats[1].value = progressData.totalAvailable.toString(); // Available Tests
+      newStats[2].value = `${Math.round(progressData.progress)}%`; // Progress
+      newStats[3].value = `${calculateAverageScore(merged)}%`; // Average Score
+      newStats[3].label = 'Average Score';
+      newStats[3].icon = '📈';
       setStats(newStats);
-
-      // Show all assessments, not just available ones
-      setAssessments(assessmentsResponse.data);
-
+      
+      // Set assessments and completed assessments
+      setAssessments(assessmentsResponse.data || []);
+      setCompletedAssessments(merged);
+      
       setLoading(false);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
-      console.error("Error response:", error.response);
       setError("Failed to load dashboard data. Please try again.");
       setLoading(false);
     }
@@ -109,6 +203,15 @@ const UserDashboard = () => {
       window.removeEventListener("storage", handleStorageChange);
     };
   }, [navigate]);
+
+  useEffect(() => {
+    // Update stats when completedAssessments changes
+    setStats(prevStats => {
+      const newStats = [...prevStats];
+      newStats[3].value = `${calculateAverageScore(completedAssessments)}%`;
+      return newStats;
+    });
+  }, [completedAssessments]);
 
   // Handler for viewing results
   const handleViewResults = (assessment) => {

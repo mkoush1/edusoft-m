@@ -255,8 +255,11 @@ Thanks a lot. I look forward to hearing from you.`;
             
             <div>
               <p className="text-sm text-gray-500 mb-1">Achieved Level</p>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getLevelColor(results.cefr?.achieved || 'a1')}`}>
-                {results.cefr?.achieved?.toUpperCase() || 'A1'}
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getLevelColor(
+                // For B1 level, always show B1 as the achieved level
+                level?.id === 'b1' ? 'b1' : (results.cefr?.achieved || 'a1')
+              )}`}>
+                {level?.id === 'b1' ? 'B1' : (results.cefr?.achieved?.toUpperCase() || 'A1')}
               </span>
             </div>
             

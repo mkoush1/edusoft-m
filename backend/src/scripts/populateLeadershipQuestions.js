@@ -542,6 +542,42 @@ const leadershipQuestions = [
   }
 ];
 
+// Utility function to shuffle an array
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+// Utility function to get a random letter from ['A', 'B', 'C', 'D']
+function getRandomLetter() {
+  const letters = ['A', 'B', 'C', 'D'];
+  return letters[Math.floor(Math.random() * letters.length)];
+}
+
+// Randomize correct answer and options for each question
+const randomizedQuestions = leadershipQuestions.map((q) => {
+  // Shuffle options
+  const shuffledOptions = shuffle([...q.options]);
+  // Pick a random index for the correct answer
+  const correctIndex = Math.floor(Math.random() * shuffledOptions.length);
+  // Assign letters to options
+  const letters = ['A', 'B', 'C', 'D'];
+  const optionsWithLetters = shuffledOptions.map((opt, idx) => ({
+    ...opt,
+    letter: letters[idx]
+  }));
+  // Set the correct answer letter
+  const correctAnswer = optionsWithLetters[correctIndex].letter;
+  return {
+    ...q,
+    options: optionsWithLetters,
+    correctAnswer
+  };
+});
+
 const populateQuestions = async () => {
   try {
     console.log('Attempting to connect to MongoDB...');
@@ -557,8 +593,8 @@ const populateQuestions = async () => {
     console.log('Cleared existing questions');
 
     // Insert new questions
-    console.log('Attempting to insert questions:', leadershipQuestions.length);
-    const result = await LeadershipQuestion.insertMany(leadershipQuestions);
+    console.log('Attempting to insert questions:', randomizedQuestions.length);
+    const result = await LeadershipQuestion.insertMany(randomizedQuestions);
     console.log('Successfully populated leadership questions. Count:', result.length);
 
     // Verify questions were inserted

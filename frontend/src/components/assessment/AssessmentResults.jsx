@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
+import mongoose from 'mongoose';
 
 const AssessmentResults = ({ results, onBack }) => {
   const radarChartRef = useRef(null);
@@ -185,6 +186,8 @@ const AssessmentResults = ({ results, onBack }) => {
 
   if (!results) return null;
 
+  console.log('Speaking assessments:', results.promptScores);
+
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
       <div className="mb-8">
@@ -264,7 +267,7 @@ const AssessmentResults = ({ results, onBack }) => {
               {results.promptScores.map((score, index) => (
                 <div key={index} className="p-3 border border-gray-200 rounded-lg">
                   <p className="font-medium mb-2">Prompt {index + 1}</p>
-                  {score.averageScore > 0 ? (
+                  {Number(score.averageScore) > 0 ? (
                     <>
                       <p className="mb-1">
                         Score: <strong>{Math.round(score.averageScore)}%</strong>

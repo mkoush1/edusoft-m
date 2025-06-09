@@ -80,7 +80,7 @@ const createDefaultAssessments = async () => {
       title: 'Leadership Skills Assessment',
       description: 'Assess your leadership capabilities and potential to guide and inspire others.',
       category: 'leadership',
-      duration: 30,
+      duration: 45,
       questions: [
         {
           questionNumber: 1,
@@ -143,21 +143,15 @@ const createDefaultAssessments = async () => {
       title: 'Problem Solving Skills Assessment',
       description: 'Test your ability to analyze complex problems and develop effective solutions.',
       category: 'problem-solving',
-      duration: 45,
+      duration: 59,
       questions: []
     },
-    {
-      title: 'Teamwork Skills Assessment',
-      description: 'Evaluate your ability to work effectively in a team environment.',
-      category: 'teamwork',
-      duration: 25,
-      questions: []
-    },
+  
     {
       title: 'Adaptability & Flexibility Assessment',
       description: 'Assess your ability to adapt to change and handle unexpected situations.',
       category: 'adaptability',
-      duration: 20,
+      duration: 45,
       questions: []
     },
     {

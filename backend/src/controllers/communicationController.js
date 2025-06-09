@@ -1,7 +1,7 @@
 // communicationController.js
 import User from '../models/User.js';
 import Assessment from '../models/Assessment.js';
-import AssessmentResult from '../models/assessmentResult.js';
+import mongoose from 'mongoose';
 import writingAssessmentTrackerService from '../services/writingAssessmentTrackerService.js';
 
 /**
@@ -36,6 +36,9 @@ class CommunicationController {
           message: 'Type and score are required'
         });
       }
+      
+      // Get AssessmentResult model dynamically
+      const AssessmentResult = mongoose.model('AssessmentResult');
       
       // Save assessment result
       const assessmentResult = new AssessmentResult({
@@ -163,9 +166,13 @@ class CommunicationController {
     try {
       const userId = req.userId;
       
-      // Safety check for AssessmentResult model
-      if (!AssessmentResult) {
-        console.error('AssessmentResult model is not available');
+      // Get AssessmentResult model dynamically
+      let AssessmentResult;
+      try {
+        AssessmentResult = mongoose.models.AssessmentResult || mongoose.model('AssessmentResult');
+      } catch (modelError) {
+        console.error('Error getting AssessmentResult model:', modelError);
+        // Return empty data if model is not available
         return res.status(200).json({
           success: true,
           data: {
