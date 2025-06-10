@@ -1,5 +1,6 @@
 import "./App.css";
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { UserContext } from "./components/DashboardLayout";
 import {
   BrowserRouter as Router,
   Routes,
@@ -56,8 +57,28 @@ import AssessmentResultsAdaptability from './pages/AssessmentResults_adaptabilit
 
 
 const App = () => {
+  const [user, setUser] = useState(() => {
+    const savedData = localStorage.getItem("userData");
+    return savedData ? JSON.parse(savedData) : {};
+  });
+
+  // Update local storage when user data changes
+  useEffect(() => {
+    if (user && Object.keys(user).length > 0) {
+      localStorage.setItem("userData", JSON.stringify(user));
+    }
+  }, [user]);
+
+  const updateUser = (newUserData) => {
+    setUser(prev => ({
+      ...prev,
+      ...newUserData
+    }));
+  };
+
   return (
-    <Router>
+    <UserContext.Provider value={{ user, updateUser }}>
+      <Router>
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/home" element={<HomePage />} />
@@ -114,7 +135,8 @@ const App = () => {
         <Route path="/assessment/results/adaptability" element={<AssessmentResultsAdaptability />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </Router>
+      </Router>
+    </UserContext.Provider>
   );
 };
 

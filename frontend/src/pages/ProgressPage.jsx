@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/DashboardLayout";
 import axios from "axios";
 import { decodeJWT } from "../utils/jwt";
-import api from "../services/api"; // Import the configured API client
+import api from "../services/api";
 import AssessmentService from '../services/assessment.service';
+import { motion } from 'framer-motion';
+import { FiAward, FiCheckCircle, FiBarChart2, FiTrendingUp, FiCalendar, FiChevronRight, FiStar, FiCheck, FiClock } from 'react-icons/fi';
 
 const ProgressPage = () => {
   const navigate = useNavigate();
@@ -16,7 +18,7 @@ const ProgressPage = () => {
   const [error, setError] = useState("");
   const [assessmentsByCategory, setAssessmentsByCategory] = useState({});
   const [showDebug, setShowDebug] = useState(false);
-  
+
   // CEFR levels
   const cefrLevels = ['A1', 'A2', 'B1', 'B2', 'C1'];
 
@@ -134,10 +136,10 @@ const ProgressPage = () => {
         setTotalCompleted(progressData.totalCompleted || 0);
         setTotalAvailable(progressData.totalAvailable || 0);
         setProgress(progressData.progress || 0);
-        
+
         // Group assessments by category
         const groupedAssessments = {};
-        
+
         // Define main categories
         const mainCategories = [
           'Leadership',
@@ -146,48 +148,48 @@ const ProgressPage = () => {
           'Adaptability and Flexibility',
           'Communication'
         ];
-        
+
         // Group assessments by main category
         mainCategories.forEach(category => {
           const categoryAssessments = completedData.filter(assessment => {
             const assessmentType = assessment.assessmentType.toLowerCase();
             return (
-              assessmentType === category.toLowerCase() || 
+              assessmentType === category.toLowerCase() ||
               assessmentType.includes(category.toLowerCase())
             );
           });
-          
+
           if (categoryAssessments.length > 0) {
             groupedAssessments[category] = categoryAssessments;
           }
         });
-        
+
         // Special grouping for Communication subcategories (CEFR levels)
         const communicationTypes = ['Listening', 'Reading', 'Writing', 'Speaking'];
-        
+
         communicationTypes.forEach(type => {
-          const typeAssessments = completedData.filter(assessment => 
+          const typeAssessments = completedData.filter(assessment =>
             assessment.assessmentType.startsWith(type)
           );
-          
+
           if (typeAssessments.length > 0) {
             if (!groupedAssessments['Communication']) {
               groupedAssessments['Communication'] = [];
             }
-            
+
             // Add type heading if it doesn't exist
             if (!groupedAssessments[type]) {
               groupedAssessments[type] = [];
             }
-            
+
             groupedAssessments[type].push(...typeAssessments);
           }
         });
-        
+
         // Special grouping for Problem Solving subcategories
         const problemSolvingTypes = ['Fast Questions Assessment', 'Puzzle Game Assessment', 'LeetCode Assessment'];
         problemSolvingTypes.forEach(type => {
-          const typeAssessments = completedData.filter(assessment => 
+          const typeAssessments = completedData.filter(assessment =>
             assessment.assessmentType === type
           );
           if (typeAssessments.length > 0) {
@@ -197,9 +199,9 @@ const ProgressPage = () => {
             groupedAssessments['Problem Solving'].push(...typeAssessments);
           }
         });
-        
+
         setAssessmentsByCategory(groupedAssessments);
-        
+
       } catch (error) {
         console.error("Error fetching progress:", error);
         setError("Failed to fetch progress data. Please try again later.");
@@ -239,15 +241,15 @@ const ProgressPage = () => {
   const getCategoryProgress = (category) => {
     const assessments = assessmentsByCategory[category] || [];
     if (assessments.length === 0) return 0;
-    
+
     // For communication skills, calculate based on completion of all CEFR levels
     if (category === 'Communication') {
       const communicationTypes = ['Listening', 'Reading', 'Writing', 'Speaking'];
       const cefrLevels = ['A1', 'A2', 'B1', 'B2', 'C1'];
-      
+
       let completedLevels = 0;
       let totalLevels = communicationTypes.length * cefrLevels.length;
-      
+
       communicationTypes.forEach(type => {
         cefrLevels.forEach(level => {
           if (completedAssessments.some(a => a.assessmentType === `${type} ${level}`)) {
@@ -255,24 +257,24 @@ const ProgressPage = () => {
           }
         });
       });
-      
+
       return Math.round((completedLevels / totalLevels) * 100);
     }
-    
+
     // For problem solving, calculate based on the three subcategories
     if (category === 'Problem Solving') {
       const subcategories = ['Fast Questions Assessment', 'Puzzle Game Assessment', 'LeetCode Assessment'];
       let completedCount = 0;
-      
+
       subcategories.forEach(subcat => {
         if (completedAssessments.some(a => a.assessmentType.includes(subcat))) {
           completedCount++;
         }
       });
-      
+
       return Math.round((completedCount / subcategories.length) * 100);
     }
-    
+
     // For other categories, use completion status
     return 100; // If assessment exists in the category, it's completed
   };
@@ -316,7 +318,7 @@ const ProgressPage = () => {
       </DashboardLayout>
     );
   }
-  
+
   // Prepare assessment categories to display
   const displayCategories = [
     { name: 'Leadership Skills', key: 'Leadership' },
@@ -333,34 +335,88 @@ const ProgressPage = () => {
   return (
     <DashboardLayout title="Progress Overview">
       <div className="space-y-6 sm:space-y-8">
-        {/* Progress Stats */}
-        <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 lg:p-8">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-            <div className="flex flex-col items-center">
-              <span className="text-3xl font-bold text-[#592538]">{totalCompleted}</span>
-              <span className="text-gray-600">Completed Tests</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-3xl font-bold text-[#592538]">{totalAvailable}</span>
-              <span className="text-gray-600">Available Tests</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-3xl font-bold text-[#592538]">{Math.round(progress)}%</span>
-              <span className="text-gray-600">Overall Progress</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-3xl font-bold text-[#592538]">{calculateAverageScore()}%</span>
-              <span className="text-gray-600">Average Score</span>
+        {/* Progress Overview */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-gradient-to-r from-[#592538] to-[#8a3a5f] rounded-2xl shadow-xl p-6 sm:p-8 text-white overflow-hidden relative"
+        >
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
+          <div className="relative z-10">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Your Learning Journey</h1>
+            <p className="text-white/80 mb-6 max-w-2xl">Track your progress and achievements across all assessments</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/20">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <FiCheckCircle className="text-white text-xl" />
+                  </div>
+                  <span className="text-sm text-white/80">Completed</span>
+                </div>
+                <div className="text-2xl font-bold">{totalCompleted}</div>
+                <div className="text-xs text-white/60">Assessments</div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/20">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <FiBarChart2 className="text-white text-xl" />
+                  </div>
+                  <span className="text-sm text-white/80">Available</span>
+                </div>
+                <div className="text-2xl font-bold">{totalAvailable}</div>
+                <div className="text-xs text-white/60">Assessments</div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/20">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <FiTrendingUp className="text-white text-xl" />
+                  </div>
+                  <span className="text-sm text-white/80">Progress</span>
+                </div>
+                <div className="text-2xl font-bold">{Math.round(progress)}%</div>
+                <div className="w-full bg-white/20 rounded-full h-1.5 mt-2">
+                  <div
+                    className="bg-white h-1.5 rounded-full transition-all duration-1000 ease-out"
+                    style={{ width: `${Math.round(progress)}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/20">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <FiAward className="text-white text-xl" />
+                  </div>
+                  <span className="text-sm text-white/80">Avg. Score</span>
+                </div>
+                <div className="text-2xl font-bold">{calculateAverageScore()}%</div>
+                <div className="text-xs text-white/60">Across all assessments</div>
+              </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Category Progress */}
-        <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 lg:p-8">
-          <h2 className="text-xl sm:text-2xl font-semibold text-[#592538] mb-4 sm:mb-6">
-            Assessment Categories
-          </h2>
-          <div className="space-y-4 sm:space-y-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="bg-white rounded-2xl shadow-xl p-6 sm:p-8"
+        >
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-[#2d3748]">Skill Progress</h2>
+              <p className="text-gray-500">Track your progress across different skill categories</p>
+            </div>
+            <button className="text-sm font-medium text-[#592538] hover:text-[#8a3a5f] transition-colors flex items-center">
+              View all <FiChevronRight className="ml-1" />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {displayCategories.map((category) => {
               const assessments = assessmentsByCategory[category.key] || [];
               const hasAssessments = assessments.length > 0;
@@ -370,62 +426,88 @@ const ProgressPage = () => {
               if (category.key === 'Listening') categoryProgress = getListeningProgress();
               if (category.key === 'Reading') categoryProgress = getReadingProgress();
               if (category.key === 'Writing') categoryProgress = getWritingProgress();
-              
+
               return (
-                <div
+                <motion.div
                   key={category.key}
-                  className={`border rounded-lg p-4 sm:p-6 hover:shadow-md transition duration-300 ${
-                    !hasAssessments ? 'opacity-70' : ''
+                  whileHover={{ y: -5, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+                  className={`bg-white rounded-xl border border-gray-100 p-5 hover:border-transparent transition-all duration-300 ${
+                    !hasAssessments ? 'opacity-70' : 'shadow-sm hover:shadow-lg'
                   }`}
                 >
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
-                    <div>
-                      <h3 className="text-lg sm:text-xl font-medium text-[#592538]">
-                        {category.name}
-                      </h3>
-                      <p className="text-gray-600 text-sm sm:text-base">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 rounded-lg" style={{ backgroundColor: 'rgba(89, 37, 56, 0.1)' }}>
+                          {category.key === 'Leadership' && <FiAward className="text-[#592538] text-xl" />}
+                          {category.key === 'Problem Solving' && <FiBarChart2 className="text-[#592538] text-xl" />}
+                          {category.key === 'Presentation' && <FiTrendingUp className="text-[#592538] text-xl" />}
+                          {category.key === 'Communication' && <FiAward className="text-[#592538] text-xl" />}
+                          {category.key === 'Listening' && <FiCheck className="text-[#592538] text-xl" />}
+                          {category.key === 'Reading' && <FiCheck className="text-[#592538] text-xl" />}
+                          {category.key === 'Writing' && <FiCheck className="text-[#592538] text-xl" />}
+                          {category.key === 'Speaking' && <FiCheck className="text-[#592538] text-xl" />}
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-800">
+                          {category.name}
+                        </h3>
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1 ml-11">
                         {hasAssessments
                           ? `${assessments.length} assessment${assessments.length !== 1 ? 's' : ''} completed`
                           : 'No assessments completed'}
                       </p>
                     </div>
+
                     {hasAssessments && (
-                      <div className="flex items-center space-x-2">
-                        <span className="px-3 py-1 rounded-full text-sm sm:text-base bg-green-100 text-green-800">
-                          Completed
-                        </span>
-                        <span className="text-lg sm:text-xl font-semibold text-[#592538]">
-                          {category.key === 'Speaking'
-                            ? `${speakingAverage}%`
-                            : `${calculateAverageScore(assessments)}%`}
-                        </span>
+                      <div className="flex flex-col items-end">
+                        <div className="flex items-center space-x-2">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                            {category.key === 'Speaking' ? speakingAverage : calculateAverageScore(assessments)}%
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">Avg. Score</div>
                       </div>
                     )}
                   </div>
+
                   <div className="mt-4">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm text-gray-600">Progress</span>
-                      <span className="text-sm font-medium text-[#592538]">{categoryProgress}%</span>
+                      <span className="text-xs font-medium text-gray-500">Progress</span>
+                      <span className="text-xs font-semibold text-[#592538]">{categoryProgress}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className="bg-[#592538] h-2.5 rounded-full"
-                        style={{ width: `${categoryProgress}%` }}
-                      ></div>
+                    <div className="w-full bg-gray-100 rounded-full h-2">
+                      <motion.div
+                        className="h-2 rounded-full bg-gradient-to-r from-[#8a3a5f] to-[#592538]"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${categoryProgress}%` }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                      />
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Individual Assessment Progress */}
-        <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 lg:p-8">
-          <h2 className="text-xl sm:text-2xl font-semibold text-[#592538] mb-4 sm:mb-6">
-            Recent Assessments
-          </h2>
-          <div className="space-y-4 sm:space-y-6">
+        {/* Recent Assessments */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="bg-white rounded-2xl shadow-xl p-6 sm:p-8"
+        >
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-[#2d3748]">Recent Assessments</h2>
+              <p className="text-gray-500">Your most recent assessment attempts</p>
+            </div>
+            <button className="text-sm font-medium text-[#592538] hover:text-[#8a3a5f] transition-colors flex items-center">
+              View all <FiChevronRight className="ml-1" />
+            </button>
+          </div>
+          <div className="space-y-4">
             {completedAssessments.length > 0 ? (
               (() => {
                 // Normalize assessment type for deduplication
@@ -453,41 +535,72 @@ const ProgressPage = () => {
                     }
                   });
                 return dedupedAssessments.slice(0, 5).map((assessment) => (
-                  <div
+                  <motion.div
                     key={assessment._id || assessment.assessmentType + assessment.completedAt}
-                    className="border rounded-lg p-4 sm:p-6 hover:shadow-md transition duration-300"
+                    whileHover={{ x: 5 }}
+                    className="group bg-white border border-gray-100 rounded-xl p-5 hover:border-transparent hover:shadow-lg transition-all duration-300 cursor-pointer"
                   >
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
-                      <div>
-                        <h3 className="text-lg sm:text-xl font-medium text-[#592538]">
-                          {assessment.assessmentType}
-                        </h3>
-                        <p className="text-gray-600 text-sm sm:text-base">
-                          {new Date(assessment.completedAt).toLocaleDateString()}
-                          {assessment.language && ` - ${assessment.language.charAt(0).toUpperCase() + assessment.language.slice(1)}`}
-                        </p>
+                    <div className="flex items-start justify-between">
+                      <div className="flex space-x-4">
+                        <div className="flex-shrink-0 mt-1">
+                          <div className="w-10 h-10 rounded-lg bg-[#f3e8f0] flex items-center justify-center">
+                            <FiCheckCircle className="text-[#8a3a5f] text-xl" />
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-base font-semibold text-gray-900 group-hover:text-[#8a3a5f] transition-colors">
+                            {assessment.assessmentType}
+                          </h3>
+                          <div className="flex items-center mt-1 space-x-3 text-sm text-gray-500">
+                            <div className="flex items-center">
+                              <FiCalendar className="mr-1.5" />
+                              <span>{new Date(assessment.completedAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}</span>
+                            </div>
+                            {assessment.language && (
+                              <div className="flex items-center">
+                                <span className="w-1 h-1 rounded-full bg-gray-400 mr-1.5"></span>
+                                <span>{assessment.language.charAt(0).toUpperCase() + assessment.language.slice(1)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="px-3 py-1 rounded-full text-sm sm:text-base bg-green-100 text-green-800">
-                          Completed
-                        </span>
-                        <span className="text-lg sm:text-xl font-semibold text-[#592538]">
-                          {getDisplayScore(assessment) !== null && getDisplayScore(assessment) !== undefined
-                            ? `${Math.round(getDisplayScore(assessment))}%`
-                            : 'Pending'}
-                        </span>
+                      <div className="flex flex-col items-end">
+                        <div className="flex items-center">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                            Completed
+                          </span>
+                        </div>
+                        <div className="mt-1">
+                          <span className="text-lg font-bold text-[#592538]">
+                            {getDisplayScore(assessment) !== null && getDisplayScore(assessment) !== undefined
+                              ? `${Math.round(getDisplayScore(assessment))}%`
+                              : 'Pending'}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ));
               })()
             ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">No assessments completed yet.</p>
+              <div className="text-center py-12">
+                <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <FiClock className="text-gray-400 text-2xl" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-1">No assessments yet</h3>
+                <p className="text-gray-500 max-w-md mx-auto">You haven't completed any assessments yet. Start your learning journey now!</p>
+                <button className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#592538] hover:bg-[#8a3a5f] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8a3a5f] transition-colors">
+                  Take an assessment
+                </button>
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
     </DashboardLayout>
   );

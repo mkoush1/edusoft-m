@@ -65,7 +65,7 @@ const LoginPage = () => {
     // Check for admin login
     if (adminEmails.includes(formData.email.toLowerCase()) && formData.password === "Ammo.1234") {
       // Simulate admin login
-      localStorage.setItem("token", "admin-token");
+      localStorage.setItem("adminToken", "admin-token");
       localStorage.setItem("userData", JSON.stringify({ email: formData.email, role: "admin" }));
       localStorage.setItem("userType", "admin");
       navigate("/admin/dashboard", { replace: true });
