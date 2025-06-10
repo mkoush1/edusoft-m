@@ -427,20 +427,32 @@ const ProgressPage = () => {
           </h2>
           <div className="space-y-4 sm:space-y-6">
             {completedAssessments.length > 0 ? (
-              completedAssessments
-                .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))
-                .filter((assessment, idx, arr) => {
-                  // Always include Fast Questions Assessment if present
-                  if (
-                    assessment.assessmentType.toLowerCase().includes('fast') ||
-                    assessment.assessmentType.toLowerCase().includes('fast questions')
-                  ) {
-                    return true;
-                  }
-                  // Default: show the most recent 5
-                  return idx < 5;
-                })
-                .map((assessment) => (
+              (() => {
+                // Normalize assessment type for deduplication
+                const normalizeType = (type) => {
+                  if (!type) return '';
+                  const t = type.toLowerCase().replace(/\s+/g, '-');
+                  if (t.includes('puzzle-game') || t.includes('puzzle')) return 'puzzle-game';
+                  if (t.includes('fast-questions') || t.includes('fast')) return 'fast-questions';
+                  if (t.includes('leetcode')) return 'leetcode';
+                  return t;
+                };
+                const dedupedAssessments = [];
+                const seenTypes = new Set();
+                completedAssessments
+                  .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))
+                  .forEach(assessment => {
+                    const normType = normalizeType(assessment.assessmentType);
+                    if (
+                      normType === 'fast-questions'
+                    ) {
+                      dedupedAssessments.push(assessment);
+                    } else if (!seenTypes.has(normType)) {
+                      dedupedAssessments.push(assessment);
+                      seenTypes.add(normType);
+                    }
+                  });
+                return dedupedAssessments.slice(0, 5).map((assessment) => (
                   <div
                     key={assessment._id || assessment.assessmentType + assessment.completedAt}
                     className="border rounded-lg p-4 sm:p-6 hover:shadow-md transition duration-300"
@@ -467,7 +479,8 @@ const ProgressPage = () => {
                       </div>
                     </div>
                   </div>
-                ))
+                ));
+              })()
             ) : (
               <div className="text-center py-8">
                 <p className="text-gray-500">No assessments completed yet.</p>

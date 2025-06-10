@@ -7,11 +7,7 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
   const [puzzle, setPuzzle] = useState(initialPuzzle);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [timer, setTimer] = useState(
-    initialPuzzle && typeof initialPuzzle.timeSpent === 'number'
-      ? 240 - initialPuzzle.timeSpent
-      : 240
-  );
+  const [timer, setTimer] = useState(240); // 4 minutes
   const [timerInterval, setTimerInterval] = useState(null);
   const [validMoves, setValidMoves] = useState([]);
   const [isPaused, setIsPaused] = useState(false);
@@ -40,43 +36,41 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
     }
   }, [timer]);
 
-  const calculateScore = (timeInSeconds, moves) => {
-    const timeInMinutes = timeInSeconds / 60;
-    const maxMoves = 50; // Define what "few moves" means
-    const moveFactor = Math.max(0, 1 - (moves / maxMoves));
+  const calculateScore = (timeSpentSeconds, moves) => {
+    // Max score is 100
+    // Deduct points for more moves and more time, but always give at least 10 for solving
+    const maxMoves = 50;
+    const maxTime = 240; // 4 minutes
 
-    let baseScore;
-    if (timeInMinutes <= 1) {
-      baseScore = 100;
-    } else if (timeInMinutes <= 2) {
-      baseScore = 85;
-    } else if (timeInMinutes <= 3) {
-      baseScore = 70;
-    } else {
-      baseScore = 50;
-    }
+    // Calculate move penalty (up to 30 points)
+    const movePenalty = Math.min(30, Math.max(0, ((moves - 20) * 1)));
+    // Calculate time penalty (up to 60 points)
+    const timePenalty = Math.min(60, Math.max(0, ((timeSpentSeconds - 60) * 0.5)));
 
-    // Adjust score based on moves
-    const finalScore = Math.round(baseScore * (0.7 + (0.3 * moveFactor)));
-    
+    let score = 100 - movePenalty - timePenalty;
+    score = Math.max(10, Math.round(score)); // Always give at least 10 for solving
+
     // Set score message
-    if (finalScore === 100) {
+    if (score >= 90) {
       setScoreMessage("Excellent! Perfect score! You're a puzzle master!");
-    } else if (finalScore >= 85) {
+    } else if (score >= 75) {
       setScoreMessage("Very good! You're really good at this!");
-    } else if (finalScore >= 70) {
+    } else if (score >= 60) {
       setScoreMessage("Good job! You can do even better next time!");
     } else {
       setScoreMessage("Keep practicing! You can improve your score!");
     }
 
-    return finalScore;
+    return score;
   };
 
   const handleTimeUp = async () => {
     clearInterval(timerInterval);
     setIsTimeUp(true);
-    const finalScore = calculateScore(240 - timer, puzzle.moves);
+    const timeSpent = 240 - timer;
+    console.log('DEBUG: [handleTimeUp] timeSpent:', timeSpent, 'moves:', puzzle.moves);
+    const finalScore = calculateScore(timeSpent, puzzle.moves);
+    console.log('DEBUG: [handleTimeUp] finalScore:', finalScore);
     setScore(finalScore);
     // Submit the assessment with the current state
     await submitAssessment({
@@ -226,25 +220,92 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
     }
   };
 
+  // Add token validation function
+  const validateToken = () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('Authentication required. Please log in again.');
+      navigate('/login');
+      return false;
+    }
+
+    // Check if token is expired
+    try {
+      const decoded = JSON.parse(atob(token.split('.')[1]));
+      if (decoded.exp * 1000 < Date.now()) {
+        setError('Session expired. Please log in again.');
+        navigate('/login');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error validating token:', error);
+      setError('Invalid session. Please log in again.');
+      navigate('/login');
+      return false;
+    }
+
+    return true;
+  };
+
+  // Add token refresh function
+  const refreshToken = async () => {
+    try {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await axios.post('http://localhost:5000/api/auth/refresh-token', {
+        refreshToken
+      });
+
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+      return false;
+    }
+  };
+
+  // Modify submitAssessment function with better error handling
   const submitAssessment = async (completedPuzzle) => {
+    if (!validateToken()) return;
+
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const finalScore = calculateScore(240 - timer, completedPuzzle.moves);
+      const timeSpent = 240 - timer;
+      console.log('DEBUG: [submitAssessment] timeSpent:', timeSpent, 'moves:', completedPuzzle.moves);
+      const finalScore = calculateScore(timeSpent, completedPuzzle.moves);
+      console.log('DEBUG: [submitAssessment] finalScore:', finalScore);
       setScore(finalScore);
+
+      // Validate puzzle data before submission
+      if (!completedPuzzle._id || !completedPuzzle.moves || typeof (240 - timer) !== 'number') {
+        throw new Error('Invalid puzzle data for submission');
+      }
+
+      const puzzleData = {
+        puzzleId: completedPuzzle._id,
+        difficulty: 'medium',
+        moves: completedPuzzle.moves,
+        timeTaken: 240 - timer,
+        completed: true,
+        score: finalScore
+      };
+
+      // Validate the data structure
+      if (!puzzleData.puzzleId || typeof puzzleData.moves !== 'number' || 
+          typeof puzzleData.timeTaken !== 'number' || typeof puzzleData.score !== 'number') {
+        throw new Error('Invalid puzzle data structure');
+      }
 
       const response = await axios.post(
         'http://localhost:5000/api/assessments/submit/puzzle-game',
-        {
-          puzzleData: [{
-            puzzleId: completedPuzzle._id,
-            difficulty: 'medium',
-            moves: completedPuzzle.moves,
-            timeTaken: 240 - timer,
-            completed: true,
-            score: finalScore
-          }]
-        },
+        { puzzleData: [puzzleData] },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -271,11 +332,38 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
           showWinMessage: true
         }));
       } else {
-        setError('Failed to submit assessment');
+        throw new Error(response.data.message || 'Failed to submit assessment');
       }
     } catch (error) {
       console.error('Error submitting assessment:', error);
-      setError(error.response?.data?.message || 'Failed to submit assessment');
+      
+      // Handle specific error cases
+      if (error.response) {
+        switch (error.response.status) {
+          case 401:
+            // Token expired, try to refresh
+            const refreshed = await refreshToken();
+            if (refreshed) {
+              // Retry submission with new token
+              return submitAssessment(completedPuzzle);
+            }
+            setError('Session expired. Please log in again.');
+            navigate('/login');
+            break;
+          case 403:
+            setError('You do not have permission to submit this assessment.');
+            break;
+          case 500:
+            setError('Server error. Please try again later.');
+            break;
+          default:
+            setError(error.response.data?.message || 'Failed to submit assessment');
+        }
+      } else if (error.request) {
+        setError('No response from server. Please check your connection.');
+      } else {
+        setError(error.message || 'Failed to submit assessment');
+      }
     } finally {
       setLoading(false);
     }
@@ -334,30 +422,44 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
     // eslint-disable-next-line
   }, []);
 
-  // Fetch retake eligibility after completion
+  // Modify the useEffect for fetching retake eligibility
   useEffect(() => {
     if (puzzle?.isCompleted || isTimeUp) {
       const checkRetake = async () => {
+        if (!validateToken()) return;
+
         try {
           const token = localStorage.getItem('token');
           const res = await axios.get('http://localhost:5000/api/assessments/puzzle-game/user/me/results', {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
           });
-          if (res.data && res.data.canRetake !== undefined) {
-            setCanRetake(res.data.canRetake);
+
+          if (res.data) {
+            setCanRetake(res.data.canRetake !== undefined ? res.data.canRetake : false);
             setRetakeMessage(res.data.retakeMessage || "");
+          }
+        } catch (error) {
+          console.error('Error checking retake eligibility:', error);
+          
+          if (error.response?.status === 401 || error.response?.status === 403) {
+            const refreshed = await refreshToken();
+            if (refreshed) {
+              return checkRetake();
+            }
+            setError('Session expired. Please log in again.');
+            navigate('/login');
           } else {
             setCanRetake(false);
-            setRetakeMessage("");
+            setRetakeMessage("Unable to check retake eligibility.");
           }
-        } catch (err) {
-          setCanRetake(false);
-          setRetakeMessage("Unable to check retake eligibility.");
         }
       };
       checkRetake();
     }
-  }, [puzzle?.isCompleted, isTimeUp]);
+  }, [puzzle?.isCompleted, isTimeUp, navigate]);
 
   if (loading) {
     return (

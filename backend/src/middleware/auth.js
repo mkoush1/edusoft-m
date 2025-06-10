@@ -11,44 +11,64 @@ export const authenticateToken = async (req, res, next) => {
 
     if (!token) {
       console.log('No token provided');
-      return res.status(401).json({ message: 'No token provided' });
+      return res.status(401).json({ 
+        success: false,
+        message: 'No token provided' 
+      });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Convert userId to ObjectId if it's a string
-    const userId = typeof decoded.userId === 'string' ? 
-      new mongoose.Types.ObjectId(decoded.userId) : 
-      decoded.userId;
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      // Convert userId to ObjectId if it's a string
+      const userId = typeof decoded.userId === 'string' ? 
+        new mongoose.Types.ObjectId(decoded.userId) : 
+        decoded.userId;
 
-    let user;
-    if (decoded.role === 'supervisor') {
-      user = await Supervisor.findById(userId);
-    } else if (decoded.role === 'admin') {
-      user = await Admin.findById(userId);
-    } else {
-      user = await User.findById(userId);
+      let user;
+      if (decoded.role === 'supervisor') {
+        user = await Supervisor.findById(userId);
+      } else if (decoded.role === 'admin') {
+        user = await Admin.findById(userId);
+      } else {
+        user = await User.findById(userId);
+      }
+
+      if (!user) {
+        return res.status(401).json({ 
+          success: false,
+          message: 'User not found' 
+        });
+      }
+
+      req.user = user;
+      req.userId = user._id;
+      req.userRole = decoded.role;
+      console.log('Token decoded successfully:', decoded);
+      next();
+    } catch (jwtError) {
+      console.log('Token verification failed:', jwtError.message);
+      if (jwtError.name === 'JsonWebTokenError') {
+        return res.status(403).json({ 
+          success: false,
+          message: 'Invalid token' 
+        });
+      }
+      if (jwtError.name === 'TokenExpiredError') {
+        return res.status(403).json({ 
+          success: false,
+          message: 'Token expired' 
+        });
+      }
+      throw jwtError;
     }
-
-    if (!user) {
-      return res.status(401).json({ message: 'User not found' });
-    }
-
-    req.user = user;
-    req.userId = user._id;
-    req.userRole = decoded.role;
-    console.log('Token decoded successfully:', decoded);
-    next();
   } catch (error) {
-    console.log('Token verification failed:', error.message);
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(403).json({ message: 'Invalid token' });
-    }
-    if (error.name === 'TokenExpiredError') {
-      return res.status(403).json({ message: 'Token expired' });
-    }
     console.error('Auth error:', error);
-    res.status(500).json({ message: 'Authentication error' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Authentication error',
+      error: error.message 
+    });
   }
 }; 
 

@@ -751,334 +751,18 @@ router.post('/start/puzzle-game', authenticateToken, async (req, res) => {
   }
 });
 
-// Submit puzzle game assessment
-router.post('/submit/puzzle-game', authenticateToken, async (req, res) => {
+// Get Puzzle Game Assessment Results
+router.get('/puzzle-game/user/me/results', authenticateToken, async (req, res) => {
   try {
-    const { puzzleData } = req.body;
     const userId = req.userId;
-
-    if (!Array.isArray(puzzleData)) {
-      return res.status(400).json({ message: 'Invalid puzzle data format' });
-    }
-
-    // Calculate total score based on completed puzzles
-    let totalScore = 0;
-    let maxScore = 100;
-    let totalMoves = 0;
-    let totalTime = 0;
-    let completedPuzzles = 0;
-    let rating = '';
-
-    puzzleData.forEach(puzzle => {
-      if (puzzle.completed) {
-        completedPuzzles++;
-        totalMoves += puzzle.moves;
-        totalTime += puzzle.timeTaken;
-        // Use the score sent from the frontend if provided
-        if (typeof puzzle.score === 'number') {
-          totalScore = puzzle.score;
-        }
-      }
-    });
-
-    // If no score sent from frontend, calculate based on completion time
-    if (typeof totalScore !== 'number' || totalScore === 0) {
-      const completionTime = totalTime / 60; // Convert to minutes
-      if (completionTime <= 1) {
-        totalScore = 100;
-        rating = 'Excellent';
-      } else if (completionTime <= 2) {
-        totalScore = 85;
-        rating = 'Very Good';
-      } else if (completionTime <= 3) {
-        totalScore = 70;
-        rating = 'Good';
-      } else if (completionTime <= 4) {
-        totalScore = 50;
-        rating = 'Fair';
-      } else {
-        totalScore = 30;
-        rating = 'Poor';
-      }
-    }
-
-    // Calculate percentage
-    const percentage = (totalScore / maxScore) * 100;
-
-    // Update user's assessment status
+    
+    // Validate user exists
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    if (!user.completedAssessments) {
-      user.completedAssessments = [];
-    }
-
-    // Check if user has already completed this assessment
-    const existingAssessmentIndex = user.completedAssessments.findIndex(
-      a => a.assessmentType === 'puzzle-game'
-    );
-
-    if (existingAssessmentIndex !== -1) {
-      // Update existing assessment score
-      user.completedAssessments[existingAssessmentIndex] = {
-        assessmentType: 'puzzle-game',
-        completedAt: new Date(),
-        score: totalScore,
-        percentage,
-        rating: rating
-      };
-    } else {
-      // Add new completion
-      user.completedAssessments.push({
-        assessmentType: 'puzzle-game',
-        completedAt: new Date(),
-        score: totalScore,
-        percentage,
-        rating: rating
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
       });
-      user.totalAssessmentsCompleted += 1;
-    }
-
-    // Update progress
-    const totalAssessments = await Assessment.countDocuments();
-    user.progress = Math.min(100, (user.totalAssessmentsCompleted / totalAssessments) * 100);
-
-    await user.save();
-
-    // Create new assessment result
-    const assessmentResult = new AssessmentResult({
-      userId,
-      assessmentType: 'puzzle-game',
-      score: totalScore,
-      percentage,
-      maxScore,
-      completedAt: new Date(),
-      rating: rating,
-      details: {
-        completedPuzzles,
-        totalPuzzles: puzzleData.length,
-        totalMoves,
-        totalTime,
-        completionTime: completionTime.toFixed(2),
-        rating: rating
-      }
-    });
-
-    await assessmentResult.save();
-
-    // Update the assessment status to completed
-    await ProblemSolvingAssessment.findOneAndUpdate(
-      { userId, assessmentType: 'puzzle-game', status: 'in-progress' },
-      { status: 'completed', completedAt: new Date() }
-    );
-
-    // Get updated assessment status for response
-    const availableAssessments = await Assessment.find();
-    const completedAssessmentTypes = user.completedAssessments.map(a => a.assessmentType);
-    const remainingAssessments = availableAssessments.filter(
-      assessment => !completedAssessmentTypes.includes(assessment.category)
-    );
-
-    res.json({
-      success: true,
-      message: 'Puzzle game assessment submitted successfully',
-      result: {
-        score: totalScore,
-        maxScore,
-        completedPuzzles,
-        totalPuzzles: puzzleData.length,
-        totalMoves,
-        totalTime,
-        completionTime: completionTime.toFixed(2),
-        rating: rating,
-        assessmentStatus: {
-          availableAssessments: remainingAssessments,
-          completedAssessments: user.completedAssessments,
-          totalAvailable: remainingAssessments.length,
-          totalCompleted: user.totalAssessmentsCompleted,
-          progress: user.progress
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Error submitting puzzle game assessment:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error submitting assessment',
-      error: error.message
-    });
-  }
-});
-
-// Get Puzzle Game Assessment Results
-router.post('/submit/puzzle-game', authenticateToken, async (req, res) => {
-  try {
-    const { puzzleData } = req.body;
-    const userId = req.userId;
-
-    if (!Array.isArray(puzzleData)) {
-      return res.status(400).json({ message: 'Invalid puzzle data format' });
-    }
-
-    // Calculate total score based on completed puzzles
-    let totalScore = 0;
-    let maxScore = 100;
-    let totalMoves = 0;
-    let totalTime = 0;
-    let completedPuzzles = 0;
-    let rating = '';
-
-    puzzleData.forEach(puzzle => {
-      if (puzzle.completed) {
-        completedPuzzles++;
-        totalMoves += puzzle.moves;
-        totalTime += puzzle.timeTaken;
-        // Use the score sent from the frontend if provided
-        if (typeof puzzle.score === 'number') {
-          totalScore = puzzle.score;
-        }
-      }
-    });
-
-    // If no score sent from frontend, calculate based on completion time
-    if (typeof totalScore !== 'number' || totalScore === 0) {
-      const completionTime = totalTime / 60; // Convert to minutes
-      if (completionTime <= 1) {
-        totalScore = 100;
-        rating = 'Excellent';
-      } else if (completionTime <= 2) {
-        totalScore = 85;
-        rating = 'Very Good';
-      } else if (completionTime <= 3) {
-        totalScore = 70;
-        rating = 'Good';
-      } else if (completionTime <= 4) {
-        totalScore = 50;
-        rating = 'Fair';
-      } else {
-        totalScore = 30;
-        rating = 'Poor';
-      }
-    }
-
-    // Calculate percentage
-    const percentage = (totalScore / maxScore) * 100;
-
-    // Update user's assessment status
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    if (!user.completedAssessments) {
-      user.completedAssessments = [];
-    }
-
-    // Check if user has already completed this assessment
-    const existingAssessmentIndex = user.completedAssessments.findIndex(
-      a => a.assessmentType === 'puzzle-game'
-    );
-
-    if (existingAssessmentIndex !== -1) {
-      // Update existing assessment score
-      user.completedAssessments[existingAssessmentIndex] = {
-        assessmentType: 'puzzle-game',
-        completedAt: new Date(),
-        score: totalScore,
-        percentage,
-        rating: rating
-      };
-    } else {
-      // Add new completion
-      user.completedAssessments.push({
-        assessmentType: 'puzzle-game',
-        completedAt: new Date(),
-        score: totalScore,
-        percentage,
-        rating: rating
-      });
-      user.totalAssessmentsCompleted += 1;
-    }
-
-    // Update progress
-    const totalAssessments = await Assessment.countDocuments();
-    user.progress = Math.min(100, (user.totalAssessmentsCompleted / totalAssessments) * 100);
-
-    await user.save();
-
-    // Create new assessment result
-    const assessmentResult = new AssessmentResult({
-      userId,
-      assessmentType: 'puzzle-game',
-      score: totalScore,
-      percentage,
-      maxScore,
-      completedAt: new Date(),
-      rating: rating,
-      details: {
-        completedPuzzles,
-        totalPuzzles: puzzleData.length,
-        totalMoves,
-        totalTime,
-        completionTime: completionTime.toFixed(2),
-        rating: rating
-      }
-    });
-
-    await assessmentResult.save();
-
-    // Update the assessment status to completed
-    await ProblemSolvingAssessment.findOneAndUpdate(
-      { userId, assessmentType: 'puzzle-game', status: 'in-progress' },
-      { status: 'completed', completedAt: new Date() }
-    );
-
-    // Get updated assessment status for response
-    const availableAssessments = await Assessment.find();
-    const completedAssessmentTypes = user.completedAssessments.map(a => a.assessmentType);
-    const remainingAssessments = availableAssessments.filter(
-      assessment => !completedAssessmentTypes.includes(assessment.category)
-    );
-
-    res.json({
-      success: true,
-      message: 'Puzzle game assessment submitted successfully',
-      result: {
-        score: totalScore,
-        maxScore,
-        completedPuzzles,
-        totalPuzzles: puzzleData.length,
-        totalMoves,
-        totalTime,
-        completionTime: completionTime.toFixed(2),
-        rating: rating,
-        assessmentStatus: {
-          availableAssessments: remainingAssessments,
-          completedAssessments: user.completedAssessments,
-          totalAvailable: remainingAssessments.length,
-          totalCompleted: user.totalAssessmentsCompleted,
-          progress: user.progress
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Error submitting puzzle game assessment:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error submitting assessment',
-      error: error.message
-    });
-  }
-});
-
-// Get Puzzle Game Assessment Results
-router.get('/puzzle-game/user/:userId/results', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    if (req.userId !== userId) {
-      return res.status(403).json({ message: 'Unauthorized' });
     }
 
     const results = await AssessmentResult.find({
@@ -1088,18 +772,42 @@ router.get('/puzzle-game/user/:userId/results', authenticateToken, async (req, r
 
     const latestResult = results[0];
     const hasCompletedAssessments = results.length > 0;
-    const overallScore = latestResult ? latestResult.score : null;
+    
+    // Calculate retake eligibility
+    let canRetake = false;
+    let retakeMessage = '';
+    let nextAvailableDate = null;
+
+    if (latestResult) {
+      const now = new Date();
+      const completedAt = new Date(latestResult.completedAt);
+      const diffDays = (now - completedAt) / (1000 * 60 * 60 * 24);
+      
+      if (diffDays >= 7) {
+        canRetake = true;
+      } else {
+        nextAvailableDate = new Date(completedAt);
+        nextAvailableDate.setDate(completedAt.getDate() + 7);
+        retakeMessage = `You can retake this assessment in ${Math.ceil(7 - diffDays)} day(s) (on ${nextAvailableDate.toLocaleDateString()})`;
+      }
+    }
 
     res.json({
-      overallScore,
+      success: true,
+      overallScore: latestResult ? latestResult.score : null,
       hasCompletedAssessments,
-      canRetake: false,
-      nextAvailableDate: null,
+      canRetake,
+      nextAvailableDate,
+      retakeMessage,
       results
     });
   } catch (error) {
     console.error('Error fetching puzzle game results:', error);
-    res.status(500).json({ message: 'Error fetching puzzle game results', error: error.message });
+    res.status(500).json({ 
+      success: false,
+      message: 'Error fetching puzzle game results', 
+      error: error.message 
+    });
   }
 });
 
@@ -1639,6 +1347,185 @@ router.post('/admin/cleanup-puzzle-game-progress', authenticateToken, isAdmin, a
   } catch (error) {
     console.error('Error cleaning up puzzle-game progress:', error);
     res.status(500).json({ message: 'Error cleaning up puzzle-game progress', error: error.message });
+  }
+});
+
+// Submit puzzle game assessment
+router.post('/submit/puzzle-game', authenticateToken, async (req, res) => {
+  try {
+    const { puzzleData } = req.body;
+    const userId = req.userId;
+
+    // Validate request body
+    if (!Array.isArray(puzzleData) || puzzleData.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid puzzle data format' 
+      });
+    }
+
+    // Validate each puzzle in the data
+    for (const puzzle of puzzleData) {
+      if (!puzzle.puzzleId || typeof puzzle.moves !== 'number' || 
+          typeof puzzle.timeTaken !== 'number' || typeof puzzle.completed !== 'boolean') {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Invalid puzzle data structure' 
+        });
+      }
+    }
+
+    // Validate user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+
+    // Calculate total score based on completed puzzles
+    let totalScore = 0;
+    let maxScore = 100;
+    let totalMoves = 0;
+    let totalTime = 0;
+    let completedPuzzles = 0;
+    let rating = '';
+
+    puzzleData.forEach(puzzle => {
+      if (puzzle.completed) {
+        completedPuzzles++;
+        totalMoves += puzzle.moves;
+        totalTime += puzzle.timeTaken;
+        if (typeof puzzle.score === 'number') {
+          totalScore = puzzle.score;
+        }
+      }
+    });
+
+    // If no score sent from frontend, calculate based on completion time
+    if (typeof totalScore !== 'number' || totalScore === 0) {
+      const completionTime = totalTime / 60; // Convert to minutes
+      if (completionTime <= 1) {
+        totalScore = 100;
+        rating = 'Excellent';
+      } else if (completionTime <= 2) {
+        totalScore = 85;
+        rating = 'Very Good';
+      } else if (completionTime <= 3) {
+        totalScore = 70;
+        rating = 'Good';
+      } else if (completionTime <= 4) {
+        totalScore = 50;
+        rating = 'Fair';
+      } else {
+        totalScore = 30;
+        rating = 'Poor';
+      }
+    }
+
+    // Calculate percentage
+    const percentage = (totalScore / maxScore) * 100;
+
+    // Update user's assessment status
+    if (!user.completedAssessments) {
+      user.completedAssessments = [];
+    }
+
+    // Check if user has already completed this assessment
+    const existingAssessmentIndex = user.completedAssessments.findIndex(
+      a => a.assessmentType === 'puzzle-game'
+    );
+
+    if (existingAssessmentIndex !== -1) {
+      // Update existing assessment score
+      user.completedAssessments[existingAssessmentIndex] = {
+        assessmentType: 'puzzle-game',
+        completedAt: new Date(),
+        score: totalScore,
+        percentage,
+        rating: rating
+      };
+    } else {
+      // Add new completion
+      user.completedAssessments.push({
+        assessmentType: 'puzzle-game',
+        completedAt: new Date(),
+        score: totalScore,
+        percentage,
+        rating: rating
+      });
+      user.totalAssessmentsCompleted += 1;
+    }
+
+    // Update progress
+    const totalAssessments = await Assessment.countDocuments();
+    user.progress = Math.min(100, (user.totalAssessmentsCompleted / totalAssessments) * 100);
+
+    await user.save();
+
+    // Create new assessment result
+    const assessmentResult = new AssessmentResult({
+      userId,
+      assessmentType: 'puzzle-game',
+      score: totalScore,
+      percentage,
+      maxScore,
+      completedAt: new Date(),
+      rating: rating,
+      details: {
+        completedPuzzles,
+        totalPuzzles: puzzleData.length,
+        totalMoves,
+        totalTime,
+        completionTime: (totalTime / 60).toFixed(2),
+        rating: rating
+      }
+    });
+
+    await assessmentResult.save();
+
+    // Update the assessment status to completed
+    await ProblemSolvingAssessment.findOneAndUpdate(
+      { userId, assessmentType: 'puzzle-game', status: 'in-progress' },
+      { status: 'completed', completedAt: new Date() }
+    );
+
+    // Get updated assessment status for response
+    const availableAssessments = await Assessment.find();
+    const completedAssessmentTypes = user.completedAssessments.map(a => a.assessmentType);
+    const remainingAssessments = availableAssessments.filter(
+      assessment => !completedAssessmentTypes.includes(assessment.category)
+    );
+
+    res.json({
+      success: true,
+      message: 'Puzzle game assessment submitted successfully',
+      result: {
+        score: totalScore,
+        maxScore,
+        completedPuzzles,
+        totalPuzzles: puzzleData.length,
+        totalMoves,
+        totalTime,
+        completionTime: (totalTime / 60).toFixed(2),
+        rating: rating,
+        assessmentStatus: {
+          availableAssessments: remainingAssessments,
+          completedAssessments: user.completedAssessments,
+          totalAvailable: remainingAssessments.length,
+          totalCompleted: user.totalAssessmentsCompleted,
+          progress: user.progress
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error submitting puzzle game assessment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error submitting assessment',
+      error: error.message
+    });
   }
 });
 
