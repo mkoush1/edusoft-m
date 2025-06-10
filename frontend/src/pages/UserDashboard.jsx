@@ -5,6 +5,7 @@ import AssessmentCard from "../components/AssessmentCard";
 import api from "../services/api";
 import { decodeJWT } from "../utils/jwt";
 import AssessmentService from '../services/assessment.service';
+import { FiCheckCircle, FiClipboard, FiTarget, FiTrendingUp, FiBarChart2, FiFileText, FiAward, FiPercent } from "react-icons/fi";
 // import '../styles/Dashboard.css';
 
 const SidebarItem = ({ icon, text, active = false }) => (
@@ -17,7 +18,9 @@ const SidebarItem = ({ icon, text, active = false }) => (
 const StatCard = ({ icon, value, label }) => (
   <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition duration-300">
     <div className="flex items-center space-x-4">
-      <span className="text-3xl">{icon}</span>
+      <span className="flex items-center justify-center w-12 h-12 rounded-full bg-gray-50">
+        {icon}
+      </span>
       <div>
         <p className="text-2xl font-bold text-[#592538]">{value}</p>
         <p className="text-gray-600">{label}</p>
@@ -32,10 +35,26 @@ const UserDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState([
-    { icon: "📊", value: "0", label: "Completed Tests" },
-    { icon: "📝", value: "0", label: "Available Tests" },
-    { icon: "🎯", value: "0%", label: "Overall Progress" },
-    { icon: "📈", value: "0%", label: "Average Score" },
+    { 
+      icon: <FiCheckCircle className="text-2xl text-green-500" />, 
+      value: "0", 
+      label: "Completed Tests" 
+    },
+    { 
+      icon: <FiClipboard className="text-2xl text-blue-500" />, 
+      value: "0", 
+      label: "Available Tests" 
+    },
+    { 
+      icon: <FiTarget className="text-2xl text-purple-500" />, 
+      value: "0%", 
+      label: "Overall Progress" 
+    },
+    { 
+      icon: <FiTrendingUp className="text-2xl text-yellow-500" />, 
+      value: "0%", 
+      label: "Average Score" 
+    },
   ]);
   const [completedAssessments, setCompletedAssessments] = useState([]);
   const [speakingAssessments, setSpeakingAssessments] = useState([]);

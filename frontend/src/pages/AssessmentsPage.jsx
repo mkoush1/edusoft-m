@@ -254,86 +254,74 @@ const AssessmentsPage = () => {
               </button>
             </div>
           </div>
-          
-          {/* Available Assessments */}
-          <h2 className="text-2xl font-semibold text-[#592538] mb-6">
-            Other Available Assessments
-          </h2>
-          {availableAssessments.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-md p-8 text-center">
-              <div className="text-4xl mb-4">🎉</div>
-              <h3 className="text-xl font-semibold text-[#592538] mb-2">
-                No Available Assessments
-              </h3>
-              <p className="text-gray-600">
-                You've completed all available assessments. Check back later for more!
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {availableAssessments.map((assessment) => (
-                <div key={assessment._id} className="bg-white rounded-xl shadow-md overflow-hidden">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-semibold text-[#592538]">
-                        {assessment.title}
-                      </h3>
-                      <span className="text-sm px-3 py-1 rounded-full bg-blue-100 text-blue-800">
-                        New
-                      </span>
-                    </div>
 
-                    <p className="text-gray-600 mb-4">
-                      {assessment.description}
-                    </p>
-
-                    <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                      <span>Duration: {assessment.duration} mins</span>
-                    </div>
-
-
-                    <button
-                      onClick={() => handleStartAssessment(assessment)}
-                      className="w-full px-4 py-2 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300"
-                    >
-                      Start Assessment
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-
-        {/* Completed Assessments */}
-        {completedAssessments.length > 0 && (
-          <section>
-            <h2 className="text-2xl font-semibold text-[#592538] mb-6">
-              Your Completed Assessments
-            </h2>
-            
-            {/* Show Communication Overview only if user has completed any communication-related assessments */}
-            {hasCommunicationAssessments && (
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold text-[#592538] mb-4">
-                  Communication Skills Progress
+          {/* Communication Skills Assessment */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden border-t-4 border-green-500 mb-10">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-[#592538]">
+                  Communication Skills Evaluation
                 </h3>
-                <CommunicationOverview />
+                <span className="text-sm px-3 py-1 rounded-full bg-green-100 text-green-800">
+                  Popular
+                </span>
               </div>
-            )}
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {completedAssessments.map((assessment) => (
-                <CompletedAssessmentCard
-                  key={assessment._id}
-                  assessment={assessment}
-                  onViewResults={handleViewResults}
-                />
-              ))}
+
+              <p className="text-gray-600 mb-4">
+                Assess your written and verbal communication skills through various scenarios. This evaluation will help identify your strengths and areas for improvement in professional communication.
+              </p>
+
+              <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                <span>Duration: 45 minutes</span>
+                <span>Format: Multiple Choice + Short Answer</span>
+              </div>
+
+              <button
+                onClick={() => navigate('/communication-assessment')}
+                className="w-full px-4 py-2 bg-[#592538] text-white rounded-lg hover:bg-[#6d2c44] transition duration-300 flex items-center justify-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
+                  <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
+                </svg>
+                Start Communication Assessment
+              </button>
             </div>
-          </section>
-        )}
+          </div>
+
+          {/* Teamwork Assessment */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden border-t-4 border-indigo-500 mb-10">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-[#592538]">
+                  Teamwork Skills Assessment
+                </h3>
+                <span className="text-sm px-3 py-1 rounded-full bg-indigo-100 text-indigo-800">
+                  Coming Soon
+                </span>
+              </div>
+
+              <p className="text-gray-600 mb-4">
+                Evaluate your ability to work effectively in a team setting. This assessment will measure your collaboration, communication, and conflict resolution skills in group scenarios.
+              </p>
+
+              <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                <span>Duration: 45 minutes</span>
+                <span>Format: Scenario-based Questions</span>
+              </div>
+
+              <button
+                disabled
+                className="w-full px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed flex items-center justify-center opacity-75"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v1h8v-1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-1a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v1h-3zM4.75 12.094A5.973 5.973 0 004 15v1H1v-1a3 3 0 013.75-2.906z" />
+                </svg>
+                Coming Soon
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
     </DashboardLayout>
   );

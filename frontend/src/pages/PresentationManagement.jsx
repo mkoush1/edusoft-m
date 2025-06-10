@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import DashboardLayout from '../components/DashboardLayout';
+import AdminLayout from '../components/AdminLayout';
 
 const PresentationManagement = () => {
   const [videos, setVideos] = useState([]);
@@ -220,29 +220,29 @@ const PresentationManagement = () => {
 
   if (loading) {
     return (
-      <DashboardLayout title="Presentation Assessment Management">
+      <AdminLayout title="Presentation Assessment Management">
         <div className="flex items-center justify-center h-64">
           <div className="text-[#592538] text-xl">Loading videos...</div>
         </div>
-      </DashboardLayout>
+      </AdminLayout>
     );
   }
 
   if (error) {
     return (
-      <DashboardLayout title="Presentation Assessment Management">
+      <AdminLayout title="Presentation Assessment Management">
         <div className="flex items-center justify-center h-64">
           <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full">
             <h2 className="text-2xl font-bold text-[#592538] mb-4">Error</h2>
             <p className="text-gray-600 mb-6">{error}</p>
           </div>
         </div>
-      </DashboardLayout>
+      </AdminLayout>
     );
   }
 
   return (
-    <DashboardLayout title="Presentation Assessment Management">
+    <AdminLayout title="Presentation Assessment Management">
       {/* Videos List */}
       <div className="mb-8">
         <h2 className="text-xl font-bold text-[#592538] mb-4">Student Submissions</h2>
@@ -538,7 +538,7 @@ const PresentationManagement = () => {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </AdminLayout>
   );
 };
 

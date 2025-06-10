@@ -75,27 +75,46 @@ const AssessmentCard = ({ assessment, onViewResults }) => {
   };
 
   console.log('Assessment category:', assessment.category);
-  const imagePath = assessment.category === "Adaptability and Flexibility" ? "/Adaptability-and-Flexibility.jpg" :
-    assessment.category === "Communication" ? "/Communication.jpeg" :
-    assessment.category === "Leadership" ? "/Leadership.avif" :
-    assessment.category === "Presentation" ? "/presentation-skills.jpg" :
-    assessment.category === "Problem Solving" ? "/Problem-Solving.jpg" :
-    assessment.category === "Team Work and Collaboration" ? "/Team-Work-and-Collaboration.jpeg" :
-    "/eduSoft_logo.png";
-  console.log('Image path:', imagePath);
+  const getDefaultImage = (category) => {
+    console.log('Getting image for category:', category);
+    
+    if (!category) {
+      console.log('No category provided, using default logo');
+      return "/eduSoft_logo.png";
+    }
+    
+    // Normalize the category name for comparison
+    const normalizedCategory = category.toString().toLowerCase().trim();
+    
+    if (normalizedCategory.includes('adaptability') || normalizedCategory.includes('flexibility')) {
+      return "/Adaptability-and-Flexibility.jpg";
+    } else if (normalizedCategory.includes('communication')) {
+      return "/Communication.jpeg";
+    } else if (normalizedCategory.includes('leadership')) {
+      return "/leadership.jpeg";
+    } else if (normalizedCategory.includes('presentation')) {
+      return "/presentation-skills.jpg";
+    } else if (normalizedCategory.includes('problem') || normalizedCategory.includes('solving')) {
+      return "/Problem-Solving.jpg";
+    } else if (normalizedCategory.includes('leetcode')) {
+      return "/leetcode.jpg";
+    }
+    
+    console.log('No matching image found for category:', category);
+    return "/eduSoft_logo.png";
+  };
+
+  // Use the assessment's image if it exists and is not the default logo, otherwise use the default for the category
+  const imagePath = assessment.image && !assessment.image.includes('eduSoft_logo.png') 
+    ? assessment.image 
+    : getDefaultImage(assessment.category);
+    
+  console.log('Image path:', imagePath, 'for category:', assessment.category);
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition duration-300 flex flex-col h-full">
       <div className="h-48 bg-gray-100">
         <img
-          src={
-            assessment.category === "Adaptability and Flexibility" ? "/Adaptability-and-Flexibility.jpg" :
-            assessment.category === "Communication" ? "/Communication.jpeg" :
-            assessment.category === "Leadership" ? "/Leadership.avif" :
-            assessment.category === "Presentation" ? "/presentation-skills.jpg" :
-            assessment.category === "Problem Solving" ? "/Problem-Solving.jpg" :
-            assessment.category === "Team Work and Collaboration" ? "/Team-Work-and-Collaboration.jpeg" :
-            "/eduSoft_logo.png"
-          } onError={(e) => console.error(`Image failed to load for ${assessment.category}:`, e.target.src)}
+          src={imagePath} onError={(e) => console.error(`Image failed to load for ${assessment.category}:`, e.target.src)}
           alt={assessment.title}
           className="w-full h-full object-cover"
         />

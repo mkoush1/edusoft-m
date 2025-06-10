@@ -284,7 +284,7 @@ const PuzzleGame = ({ initialPuzzle, assessmentId }) => {
       setScore(finalScore);
 
       // Validate puzzle data before submission
-      if (!completedPuzzle._id || !completedPuzzle.moves || typeof (240 - timer) !== 'number') {
+      if (!completedPuzzle._id || typeof completedPuzzle.moves !== 'number' || typeof (240 - timer) !== 'number') {
         throw new Error('Invalid puzzle data for submission');
       }
 
