@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSoft API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        pre {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            overflow: auto;
+            max-height: 400px;
+        }
+        .endpoint-group {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>EduSoft API Test Page</h1>
+    <p>Use this page to test the various API endpoints for the EduSoft application deployed on Cloudflare Pages.</p>
+    
+    <div class="endpoint-group">
+        <h2>Presentation Assessment API</h2>
+        <button onclick="testEndpoint('/api/assessments/presentation/pending')">Test Pending Presentations</button>
+        <button onclick="testEndpoint('/api/assessments/presentation/results')">Test Presentation Results</button>
+        <button onclick="testPostEndpoint('/api/assessments/presentation/evaluate', {
+            videoUrl: 'https://example.com/test-video.mp4',
+            title: 'Test Presentation'
+        })">Test Presentation Evaluation</button>
+    </div>
+    
+    <div class="endpoint-group">
+        <h2>Writing Assessment API</h2>
+        <button onclick="testEndpoint('/api/writing-assessment/generate-prompt?level=b2&language=english')">Get Writing Prompt</button>
+        <button onclick="testEndpoint('/api/writing-assessment/results')">Test Writing Results</button>
+        <button onclick="testPostEndpoint('/api/writing-assessment/evaluate', {
+            text: 'This is a sample essay for testing the writing assessment API. Technology has significantly changed our daily lives in many ways. From communication to education, technology has made things more efficient and accessible.',
+            title: 'Technology Impact'
+        })">Test Writing Evaluation</button>
+    </div>
+    
+    <div class="endpoint-group">
+        <h2>Speaking Assessment API</h2>
+        <button onclick="testEndpoint('/api/speaking-assessment/pending')">Test Pending Speaking</button>
+        <button onclick="testEndpoint('/api/speaking-assessment/results')">Test Speaking Results</button>
+        <button onclick="testPostEndpoint('/api/speaking-assessment/evaluate', {
+            audioUrl: 'https://example.com/test-audio.mp3',
+            prompt: 'Describe your favorite place to visit'
+        })">Test Speaking Evaluation</button>
+    </div>
+    
+    <div class="endpoint-group">
+        <h2>Communication API</h2>
+        <button onclick="testEndpoint('/api/communication/results')">Test Communication Results</button>
+        <button onclick="testPostEndpoint('/api/communication/assess', {
+            text: 'This is a sample communication text for assessment.',
+            title: 'Professional Communication'
+        })">Test Communication Assessment</button>
+    </div>
+    
+    <h2>Response:</h2>
+    <pre id="response">Results will appear here...</pre>
+    
+    <script>
+        async function testEndpoint(endpoint) {
+            document.getElementById('response').innerHTML = 'Loading...';
+            try {
+                const response = await fetch(endpoint);
+                const data = await response.json();
+                document.getElementById('response').innerHTML = 
+                    `<span class="${response.ok ? 'success' : 'error'}">Status: ${response.status} ${response.statusText}</span>\n` + 
+                    JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('response').innerHTML = 
+                    `<span class="error">Error: ${error.message}</span>`;
+            }
+        }
+        
+        async function testPostEndpoint(endpoint, body) {
+            document.getElementById('response').innerHTML = 'Loading...';
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+                const data = await response.json();
+                document.getElementById('response').innerHTML = 
+                    `<span class="${response.ok ? 'success' : 'error'}">Status: ${response.status} ${response.statusText}</span>\n` + 
+                    JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('response').innerHTML = 
+                    `<span class="error">Error: ${error.message}</span>`;
+            }
+        }
+    </script>
+</body>
+</html> 
