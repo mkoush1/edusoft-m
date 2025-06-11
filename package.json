@@ -1,24 +1,29 @@
 {
   "name": "edusoft",
   "version": "1.0.0",
-  "description": "EduSoft is a comprehensive educational management system that provides a platform for supervisors and users to manage educational content and track progress.",
-  "main": "index.js",
+  "description": "EduSoft - Educational Management Platform",
+  "main": "deploy.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "vite",
+    "deploy": "node deploy.js",
     "build": "cd frontend && npm install && npm run build"
   },
-  "keywords": [],
+  "keywords": [
+    "education",
+    "assessment",
+    "cloudflare",
+    "pages"
+  ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
-    "chart.js": "^4.4.9",
-    "dotenv": "^16.5.0",
-    "express-async-handler": "^1.2.0",
-    "framer-motion": "^12.15.0",
-    "googleapis": "^149.0.0",
-    "leetcode-query": "^2.0.0",
-    "mongoose": "^8.15.1",
-    "multer": "^2.0.0"
+    "wrangler": "^3.0.0"
+  },
+  "devDependencies": {
+    "fs-extra": "^10.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }

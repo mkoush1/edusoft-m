@@ -6,15 +6,16 @@ compatibility_flags = []
 # Compatibility date
 compatibility_date = "2023-11-01"
 
-# Enable Functions
-[build.functions]
+# Functions configuration
+[functions]
 directory = "/functions"
 included_files = ["**/*.js", "**/*.mjs"]
+node_compat = true
 
-# Configure build output
+# Build configuration
 [build]
 command = "cd frontend && npm install && npm run build"
-output_dir = "dist"
+output_directory = "frontend/dist"
 
 [build.environment]
 NODE_VERSION = "18"
