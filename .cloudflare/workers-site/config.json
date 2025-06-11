@@ -1,0 +1,4 @@
+{
+  "bucket": "frontend/dist",
+  "entry-point": "workers-site"
+} 
