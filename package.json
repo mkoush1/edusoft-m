@@ -4,7 +4,9 @@
   "description": "EduSoft is a comprehensive educational management system that provides a platform for supervisors and users to manage educational content and track progress.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite",
+    "build": "cd frontend && npm install && npm run build"
   },
   "keywords": [],
   "author": "",
