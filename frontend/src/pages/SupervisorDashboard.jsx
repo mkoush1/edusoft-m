@@ -5,7 +5,7 @@ import axios from 'axios';
 const SupervisorDashboard = () => {
   const navigate = useNavigate();
   const [supervisorData, setSupervisorData] = useState(null);
-  const [pendingAssessments, setPendingAssessments] = useState(0);
+  const [pendingAssessments, setPendingAssessments] = useState([]);
   const [pendingPresentationCount, setPendingPresentationCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -58,16 +58,29 @@ const SupervisorDashboard = () => {
       
       console.log('Pending assessments response:', response.data);
       
-      if (response.data.success) {
-        setPendingAssessments(response.data.assessments.length);
-        console.log(`Found ${response.data.assessments.length} pending assessments`);
+      // Defensive check for response data structure
+      if (response.data && response.data.success) {
+        // Check if assessments array exists and has length property
+        if (response.data.assessments && Array.isArray(response.data.assessments)) {
+          setPendingAssessments(response.data.assessments);
+          console.log(`Found ${response.data.assessments.length} pending assessments`);
+        } else if (response.data.pendingAssessments && Array.isArray(response.data.pendingAssessments)) {
+          // Fallback to pendingAssessments if that's what the API returns
+          setPendingAssessments(response.data.pendingAssessments);
+          console.log(`Found ${response.data.pendingAssessments.length} pending assessments`);
+        } else {
+          // If no valid assessments array is found
+          console.warn('No assessments array found in response:', response.data);
+          setPendingAssessments([]);
+        }
       } else {
-        console.error('Failed to fetch pending assessments:', response.data.message);
+        console.error('Failed to fetch pending assessments:', response.data?.message || 'Unknown error');
         setError('Failed to load pending assessments');
       }
     } catch (error) {
       console.error('Error fetching pending assessments:', error);
       setError('Error loading data from server');
+      setPendingAssessments([]); // Set to [] on error
     } finally {
       setLoading(false);
     }
@@ -81,15 +94,33 @@ const SupervisorDashboard = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-      if (response.data.success) {
-        setPendingPresentationCount(response.data.assessments.length);
+      
+      console.log('Pending presentation assessments response:', response.data);
+      
+      // Defensive check for response data structure
+      if (response.data && response.data.success) {
+        // Check if assessments array exists and has length property
+        if (response.data.assessments && Array.isArray(response.data.assessments)) {
+          setPendingPresentationCount(response.data.assessments.length);
+        } else if (response.data.pendingAssessments && Array.isArray(response.data.pendingAssessments)) {
+          // Fallback to pendingAssessments if that's what the API returns
+          setPendingPresentationCount(response.data.pendingAssessments.length);
+        } else {
+          // If no valid assessments array is found
+          console.warn('No assessments array found in presentation response:', response.data);
+          setPendingPresentationCount(0);
+        }
+      } else {
+        console.error('Failed to fetch pending presentation assessments');
+        setPendingPresentationCount(0);
       }
     } catch (error) {
+      console.error('Error fetching pending presentation assessments:', error);
       if (error.response && error.response.status === 401) {
         setError('Session expired or unauthorized. Please log in again.');
         navigate('/login');
       }
-      // handle other errors if needed
+      setPendingPresentationCount(0); // Set to 0 on error
     }
   };
 
@@ -186,9 +217,9 @@ const SupervisorDashboard = () => {
               >
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-indigo-700">Speaking Assessments</h3>
-                  {pendingAssessments > 0 ? (
+                  {pendingAssessments.length > 0 ? (
                     <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                      {pendingAssessments} pending
+                      {pendingAssessments.length} pending
                     </span>
                   ) : (
                     <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
