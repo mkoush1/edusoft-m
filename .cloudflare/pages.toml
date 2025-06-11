@@ -1,3 +1,17 @@
+# Cloudflare Pages configuration
+
+# Compatibility flags
+compatibility_flags = []
+
+# Compatibility date
+compatibility_date = "2023-11-01"
+
+# Enable Functions
+[build.functions]
+directory = "/functions"
+included_files = ["**/*.js", "**/*.mjs"]
+
+# Configure build output
 [build]
 command = "cd frontend && npm install && npm run build"
 output_dir = "dist"
@@ -12,4 +26,7 @@ entry-point = "frontend/dist"
 [[redirects]]
 from = "/*"
 to = "/index.html"
-status = 200 
+status = 200
+
+[build.upload]
+format = "directory" 

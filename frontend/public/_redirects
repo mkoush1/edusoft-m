@@ -1,1 +1,5 @@
-/* /index.html 200 
+# Redirects for Single Page Application
+/*    /index.html   200
+
+# API endpoints should not be redirected
+/api/*  200 
