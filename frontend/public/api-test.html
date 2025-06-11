@@ -57,11 +57,50 @@
             color: #27ae60;
             font-weight: bold;
         }
+        .warning {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        .status-panel {
+            background-color: #f0f7fb;
+            border-left: 5px solid #3498db;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .env-status {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .env-item {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .env-configured {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .env-missing {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
     </style>
 </head>
 <body>
     <h1>EduSoft API Test Page</h1>
     <p>Use this page to test the various API endpoints for the EduSoft application deployed on Cloudflare Pages.</p>
+    
+    <div class="status-panel">
+        <h2>Environment Status</h2>
+        <div class="env-status" id="env-status">
+            <span class="env-item">Checking environment...</span>
+        </div>
+        <button onclick="checkEnvironment()">Check Environment Variables</button>
+        <button onclick="testEndpoint('/api/status')">Check API Status</button>
+        <button onclick="testEndpoint('/api/health')">Check API Health</button>
+    </div>
     
     <div class="endpoint-group">
         <h2>Presentation Assessment API</h2>
@@ -106,6 +145,46 @@
     <pre id="response">Results will appear here...</pre>
     
     <script>
+        // Check environment on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            checkEnvironment();
+        });
+        
+        async function checkEnvironment() {
+            document.getElementById('env-status').innerHTML = '<span class="env-item">Checking environment...</span>';
+            try {
+                const response = await fetch('/api/env-check');
+                const data = await response.json();
+                
+                let statusHtml = '';
+                if (data.environment) {
+                    if (data.environment.mongodb) {
+                        statusHtml += '<span class="env-item env-configured">MongoDB: Configured</span>';
+                    } else {
+                        statusHtml += '<span class="env-item env-missing">MongoDB: Not Configured</span>';
+                    }
+                    
+                    if (data.environment.jwt) {
+                        statusHtml += '<span class="env-item env-configured">JWT: Configured</span>';
+                    } else {
+                        statusHtml += '<span class="env-item env-missing">JWT: Not Configured</span>';
+                    }
+                    
+                    statusHtml += `<span class="env-item env-configured">Environment: ${data.environment.node_env}</span>`;
+                } else {
+                    statusHtml = '<span class="env-item env-missing">Environment check failed</span>';
+                }
+                
+                document.getElementById('env-status').innerHTML = statusHtml;
+                document.getElementById('response').innerHTML = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('env-status').innerHTML = 
+                    `<span class="env-item env-missing">Error checking environment: ${error.message}</span>`;
+                document.getElementById('response').innerHTML = 
+                    `<span class="error">Error: ${error.message}</span>`;
+            }
+        }
+        
         async function testEndpoint(endpoint) {
             document.getElementById('response').innerHTML = 'Loading...';
             try {

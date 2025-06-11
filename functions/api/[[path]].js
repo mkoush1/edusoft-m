@@ -21,16 +21,53 @@ export async function onRequest(context) {
   }
 
   try {
-    // Connect to MongoDB (this will use our mock implementation for now)
-    const mongodb = await connectToMongoDB(env);
-    
+    // Check for environment variables
+    const envStatus = {
+      mongodb: !!env.MONGODB_URI,
+      jwt: !!env.JWT_SECRET,
+      node_env: env.NODE_ENV || 'production'
+    };
+
     // Extract auth token if present
     let token = null;
     const authHeader = request.headers.get('Authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7);
     }
-
+    
+    // Connect to MongoDB
+    const mongodb = await connectToMongoDB(env);
+    
+    // Handle status endpoint
+    if (path === 'status') {
+      return new Response(JSON.stringify({
+        status: 'ok',
+        message: 'API is running',
+        environment: envStatus.node_env,
+        database: envStatus.mongodb ? 'configured' : 'not configured',
+        auth: envStatus.jwt ? 'configured' : 'not configured',
+        timestamp: new Date().toISOString()
+      }), { headers });
+    }
+    
+    // Handle health check
+    if (path === 'health') {
+      return new Response(JSON.stringify({
+        status: 'healthy',
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+      }), { headers });
+    }
+    
+    // Handle environment check
+    if (path === 'env-check') {
+      return new Response(JSON.stringify({
+        environment: envStatus,
+        message: envStatus.mongodb ? 'MongoDB URI is configured' : 'MongoDB URI is missing',
+        timestamp: new Date().toISOString()
+      }), { headers });
+    }
+    
     // Handle different API routes
     if (path.startsWith('auth/')) {
       return handleAuthRoutes(path.replace('auth/', ''), request, headers, env, mongodb);
@@ -49,7 +86,7 @@ export async function onRequest(context) {
       status: 404
     });
   } catch (error) {
-    console.error(`Error handling request to ${path}:`, error);
+    console.error(`Error handling API request to ${path}:`, error);
     return new Response(JSON.stringify({ 
       error: error.message || 'Internal Server Error',
       path,

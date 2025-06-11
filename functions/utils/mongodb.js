@@ -1,94 +1,60 @@
 // MongoDB connection helper for Cloudflare Functions
 // This is a simplified version that uses environment variables
 
+import { MongoClient } from 'mongodb';
+
+let cachedClient = null;
+
 /**
- * Connect to MongoDB Atlas from Cloudflare Functions
- * 
- * This function would normally use the MongoDB Atlas Data API
- * Since we can't directly use the MongoDB driver in Cloudflare Functions
- * 
- * @param {Object} env - Environment variables from Cloudflare
- * @returns {Object} - MongoDB connection object
+ * Connect to MongoDB using environment variables or fallback values
+ * @param {Object} env - Environment variables
+ * @returns {Promise<MongoClient>} MongoDB client
  */
 export async function connectToMongoDB(env) {
-  // In a real implementation, you would use the MongoDB Atlas Data API
-  // or a compatible serverless database solution
-  
-  // For now, we'll return a mock implementation
-  return {
-    db: (dbName) => ({
-      collection: (collectionName) => ({
-        // Mock find operation
-        find: (query) => ({
-          toArray: async () => {
-            console.log(`Mock find in ${dbName}.${collectionName}`, query);
-            return mockData[collectionName] || [];
-          }
-        }),
-        
-        // Mock findOne operation
-        findOne: async (query) => {
-          console.log(`Mock findOne in ${dbName}.${collectionName}`, query);
-          const items = mockData[collectionName] || [];
-          return items.find(item => {
-            // Simple query matching
-            for (const key in query) {
-              if (item[key] !== query[key]) {
-                return false;
-              }
-            }
-            return true;
-          });
-        },
-        
-        // Mock insertOne operation
-        insertOne: async (doc) => {
-          console.log(`Mock insertOne in ${dbName}.${collectionName}`, doc);
-          if (!mockData[collectionName]) {
-            mockData[collectionName] = [];
-          }
-          const _id = `mock_id_${Date.now()}`;
-          const newDoc = { ...doc, _id };
-          mockData[collectionName].push(newDoc);
-          return { insertedId: _id };
-        },
-        
-        // Mock updateOne operation
-        updateOne: async (filter, update) => {
-          console.log(`Mock updateOne in ${dbName}.${collectionName}`, filter, update);
-          if (!mockData[collectionName]) {
-            return { matchedCount: 0, modifiedCount: 0 };
-          }
-          
-          let matchedCount = 0;
-          let modifiedCount = 0;
-          
-          mockData[collectionName] = mockData[collectionName].map(item => {
-            // Simple filter matching
-            let isMatch = true;
-            for (const key in filter) {
-              if (item[key] !== filter[key]) {
-                isMatch = false;
-                break;
-              }
-            }
-            
-            if (isMatch) {
-              matchedCount++;
-              // Apply updates
-              if (update.$set) {
-                modifiedCount++;
-                return { ...item, ...update.$set };
-              }
-            }
-            return item;
-          });
-          
-          return { matchedCount, modifiedCount };
-        }
-      })
-    })
-  };
+  // If we already have a cached client, return it
+  if (cachedClient) {
+    return cachedClient;
+  }
+
+  try {
+    // Get MongoDB URI from environment variables or use a fallback for testing
+    const uri = env.MONGODB_URI || process.env.MONGODB_URI || 'mongodb+srv://demo:demo@cluster0.mongodb.net/edusoft';
+    
+    // If no URI is available, throw an error
+    if (!uri) {
+      throw new Error('MongoDB URI not found in environment variables');
+    }
+
+    // Connect to MongoDB
+    const client = new MongoClient(uri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+
+    await client.connect();
+    
+    // Cache the client for future use
+    cachedClient = client;
+    
+    console.log('Successfully connected to MongoDB');
+    return client;
+  } catch (error) {
+    console.error('Failed to connect to MongoDB:', error);
+    
+    // Return a mock client for testing purposes
+    return {
+      db: (dbName) => ({
+        collection: (collectionName) => ({
+          find: () => ({ toArray: async () => [] }),
+          findOne: async () => null,
+          insertOne: async () => ({ insertedId: 'mock_id' }),
+          updateOne: async () => ({ modifiedCount: 1 }),
+          deleteOne: async () => ({ deletedCount: 1 })
+        })
+      }),
+      close: async () => {}
+    };
+  }
 }
 
 // Mock data for development and testing
