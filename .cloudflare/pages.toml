@@ -14,7 +14,7 @@ node_compat = true
 
 # Build configuration
 [build]
-command = "cd frontend && npm install && npm run build"
+command = "node cloudflare-build.js"
 output_directory = "frontend/dist"
 
 [build.environment]
