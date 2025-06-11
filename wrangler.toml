@@ -4,7 +4,7 @@ compatibility_date = "2023-11-01"
 
 # Build configuration
 [build]
-command = "cd frontend && npm install && npm run build"
+command = "npm run build"
 
 [build.upload]
 format = "directory"
