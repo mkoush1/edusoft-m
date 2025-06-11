@@ -1,7 +1,8 @@
 [build]
 command = "cd frontend && npm install && npm run build"
-output_dir = "frontend/dist"
 
-[site]
-bucket = "frontend/dist"
-entry-point = "frontend/dist" 
+[build.upload]
+format = "directory"
+
+[pages]
+build_output_directory = "frontend/dist" 
