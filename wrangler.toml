@@ -22,10 +22,27 @@ vars = { NODE_ENV = "production" }
 MONGODB_URI = "mongodb+srv://username:password@cluster.mongodb.net/edusoft"
 JWT_SECRET = "your_jwt_secret_here"
 
+# Route definitions
 [[routes]]
 pattern = "/api/*"
 script = "functions/api/[[path]].js"
 
 [[routes]]
 pattern = "/api/supervisors/*"
-script = "functions/api/supervisors/[[path]].js" 
+script = "functions/api/supervisors/[[path]].js"
+
+[[routes]]
+pattern = "/api/assessments/presentation/*"
+script = "functions/api/assessments/presentation/[[path]].js"
+
+[[routes]]
+pattern = "/api/speaking-assessment/*"
+script = "functions/api/speaking-assessment/[[path]].js"
+
+[[routes]]
+pattern = "/api/writing-assessment/*"
+script = "functions/api/writing-assessment/[[path]].js"
+
+[[routes]]
+pattern = "/api/communication/*"
+script = "functions/api/communication/[[path]].js" 
