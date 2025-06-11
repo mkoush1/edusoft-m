@@ -1,9 +1,8 @@
 import axios from 'axios';
 
 // Set the base URL for all API requests
-// In Create React App, environment variables need to be prefixed with REACT_APP_
-// If not available, default to localhost:5000
-const baseURL = 'http://localhost:5000';
+// Use relative URL to work both in development and production
+const baseURL = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '/api';
 
 // Create an axios instance with default configuration
 const api = axios.create({

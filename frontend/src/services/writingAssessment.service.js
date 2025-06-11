@@ -1,9 +1,8 @@
 import axios from 'axios';
 
-// Try to use environment variables first, then fallback to origin or localhost
+// Use relative URL in production, localhost in development
 const API_URL = import.meta.env.VITE_API_URL || 
-                window.location.origin + '/api' || 
-                'http://localhost:5000/api';
+                (window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : '/api');
 
 // Log the API URL for debugging
 console.log("WritingAssessmentService using API URL:", API_URL);
